@@ -40,7 +40,10 @@ test('writeReports keeps the Markdown path separate from its contents', async (t
   const root = await tempDirectory();
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const written = await writeReports(root, 'reports', report);
-  assert.equal(written.markdown, path.join(root, 'reports', 'ruletrip-summary.md'));
+  assert.equal(
+    written.markdown,
+    path.join(await fs.realpath(root), 'reports', 'ruletrip-summary.md')
+  );
   assert.match(written.markdownText, /# RuleTrip report/u);
   assert.match(await fs.readFile(written.markdown, 'utf8'), /Conclusion/u);
 });

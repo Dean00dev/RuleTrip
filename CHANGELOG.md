@@ -17,6 +17,7 @@ All notable changes to RuleTrip are documented here.
 - refusal of privileged `pull_request_target` execution;
 - traversal and external-symlink mutation defences;
 - hostile tests for false greens, broken controls, timeouts, and source preservation.
+- Node 24-native, SHA-pinned CI actions across Linux, macOS, and Windows.
 
 [Unreleased]: https://github.com/Dean00dev/RuleTrip/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Dean00dev/RuleTrip/releases/tag/v0.1.0

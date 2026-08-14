@@ -11,8 +11,16 @@ function appendBounded(chunks, chunk, state, maximum) {
 function terminate(child) {
   if (!child.pid) return;
   try {
-    if (process.platform !== 'win32') process.kill(-child.pid, 'SIGTERM');
-    else child.kill('SIGTERM');
+    if (process.platform !== 'win32') {
+      process.kill(-child.pid, 'SIGTERM');
+    } else {
+      const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+        windowsHide: true,
+        stdio: 'ignore'
+      });
+      killer.on('error', () => child.kill('SIGTERM'));
+      killer.unref();
+    }
   } catch {
     // The process may already have exited.
   }
