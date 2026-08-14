@@ -1,0 +1,30 @@
+name: Canary proposal
+description: Propose a useful, inert guardrail canary.
+title: "canary: "
+labels: [enhancement, canary]
+body:
+  - type: input
+    id: guard
+    attributes:
+      label: Target guard or tool
+      placeholder: npm test, tsc, actionlint, a policy scanner...
+    validations:
+      required: true
+  - type: textarea
+    id: violation
+    attributes:
+      label: Exact violation to plant
+    validations:
+      required: true
+  - type: textarea
+    id: inert
+    attributes:
+      label: Why the canary is inert
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: False-positive and false-negative boundaries
+    validations:
+      required: true

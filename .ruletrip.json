@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "defaults": {
+    "timeoutMs": 120000,
+    "maxOutputBytes": 65536,
+    "linkPaths": [
+      "node_modules"
+    ]
+  },
+  "guards": [
+    {
+      "id": "test-discovery",
+      "name": "Node test discovery",
+      "command": "node --test",
+      "canaries": [
+        {
+          "id": "failing-test",
+          "name": "A deliberately failing test is discovered",
+          "type": "create",
+          "path": "test/ruletrip-canary.test.js",
+          "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n"
+        }
+      ]
+    },
+    {
+      "id": "syntax-gate",
+      "name": "JavaScript syntax gate",
+      "command": "npm run check",
+      "canaries": [
+        {
+          "id": "syntax-error",
+          "name": "A planted syntax error is rejected",
+          "type": "append",
+          "path": "src/constants.js",
+          "content": "\nRULETRIP deliberate syntax failure !!!\n"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+node_modules/
+ruletrip-report/
+*.log
+.DS_Store

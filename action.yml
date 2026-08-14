@@ -1,0 +1,43 @@
+name: RuleTrip Harness Canary
+description: Plant controlled failures in disposable worktrees and prove your repository guardrails reject them.
+author: Dean Egan
+
+branding:
+  icon: activity
+  color: orange
+
+inputs:
+  config:
+    description: Path to the RuleTrip JSON configuration file.
+    required: false
+    default: .ruletrip.json
+  report_dir:
+    description: Directory for Markdown, JSON, and SARIF reports.
+    required: false
+    default: ruletrip-report
+  fail_on:
+    description: Comma-separated outcomes that fail the step (dead, broken, inconclusive).
+    required: false
+    default: dead,broken,inconclusive
+
+outputs:
+  conclusion:
+    description: Overall RuleTrip conclusion.
+  alive:
+    description: Number of canaries rejected by their guard.
+  dead:
+    description: Number of canaries that escaped with a zero exit code.
+  broken:
+    description: Number of guards whose clean baseline failed.
+  inconclusive:
+    description: Number of canaries or guards that could not be classified safely.
+  json_report:
+    description: Path to the JSON report.
+  sarif_report:
+    description: Path to the SARIF report.
+  markdown_report:
+    description: Path to the Markdown summary.
+
+runs:
+  using: node24
+  main: src/action.js

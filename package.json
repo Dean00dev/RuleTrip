@@ -1,0 +1,41 @@
+{
+  "name": "ruletrip",
+  "version": "0.1.0",
+  "description": "Mutation testing for repository guardrails: prove your feedback controls trip before trusting a green build.",
+  "type": "module",
+  "bin": {
+    "ruletrip": "src/cli.js"
+  },
+  "scripts": {
+    "check": "node scripts/check.js",
+    "test": "node --test",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "github-actions",
+    "mutation-testing",
+    "agentic-coding",
+    "harness-engineering",
+    "ci",
+    "guardrails"
+  ],
+  "author": "Dean Egan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dean00dev/RuleTrip.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dean00dev/RuleTrip/issues"
+  },
+  "homepage": "https://github.com/Dean00dev/RuleTrip#readme",
+  "files": [
+    "src",
+    "action.yml",
+    "README.md",
+    "LICENSE"
+  ]
+}
