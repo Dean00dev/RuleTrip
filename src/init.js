@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_CONFIG } from './constants.js';
+import { buildManualStarterGuard, discoverCanaryPacks } from './presets.js';
 
 async function exists(value) {
   try {
@@ -17,16 +18,25 @@ async function chooseTestDirectory(root) {
   return 'test';
 }
 
-export async function buildStarterConfig(root) {
-  let packageJson = null;
+async function readPackageJson(root) {
   try {
-    packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+    return JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   } catch {
-    // A language-neutral starter is returned below.
+    return null;
   }
+}
 
+export async function buildStarterConfig(root) {
+  const packageJson = await readPackageJson(root);
   const testDirectory = await chooseTestDirectory(root);
-  const command = packageJson?.scripts?.test ? 'npm test' : 'REPLACE_WITH_YOUR_GUARD_COMMAND';
+  const detected = discoverCanaryPacks(packageJson, { testDirectory });
+  const guards = detected.guards.length > 0 ? detected.guards : [buildManualStarterGuard(testDirectory)];
+  const first = detected.discoveries[0] ?? {
+    pack: 'manual',
+    command: guards[0].command,
+    commandSource: 'manual configuration required'
+  };
+
   const config = {
     version: 1,
     defaults: {
@@ -34,31 +44,17 @@ export async function buildStarterConfig(root) {
       maxOutputBytes: 65536,
       linkPaths: ['node_modules']
     },
-    guards: [
-      {
-        id: 'tests',
-        name: 'Test discovery',
-        command,
-        canaries: [
-          {
-            id: 'failing-test',
-            name: 'A deliberately failing test is discovered',
-            type: 'create',
-            path: `${testDirectory}/ruletrip-canary.test.js`,
-            content: "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n"
-          }
-        ]
-      }
-    ]
+    guards
   };
 
   return {
     config,
-    needsCommand: !packageJson?.scripts?.test,
+    needsCommand: detected.guards.length === 0,
     discovery: {
       testDirectory,
-      command,
-      commandSource: packageJson?.scripts?.test ? 'package.json scripts.test' : 'manual configuration required'
+      command: first.command,
+      commandSource: first.commandSource,
+      guards: detected.discoveries
     }
   };
 }
