@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RuleTrip configuration schema v1",
+  "type": "object",
+  "required": ["version", "guards"],
+  "properties": {
+    "version": { "const": 1 },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 1800000 },
+        "maxOutputBytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+        "linkPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "guards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "command", "canaries"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" },
+          "name": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "minLength": 1 },
+          "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 1800000 },
+          "maxOutputBytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+          "canaries": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "type", "path"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" },
+                "name": { "type": "string", "minLength": 1 },
+                "type": { "enum": ["create", "append", "replace", "delete"] },
+                "path": { "type": "string", "minLength": 1 },
+                "content": { "type": "string" },
+                "overwrite": { "type": "boolean" },
+                "search": { "type": "string" },
+                "replacement": { "type": "string" },
+                "replaceAll": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
