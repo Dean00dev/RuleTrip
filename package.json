@@ -1,6 +1,6 @@
 {
   "name": "ruletrip",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mutation testing for repository guardrails: prove your feedback controls trip before trusting a green build.",
   "type": "module",
   "bin": {
@@ -36,6 +36,8 @@
     "src",
     "action.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs",
+    "schema"
   ]
 }

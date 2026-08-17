@@ -2,12 +2,13 @@
 
 The roadmap is ordered by evidence value, not feature count.
 
-## v0.2 — Canary packs
+## v0.2 — Canary packs — shipped 2026-08-17
 
-- audited presets for common test, type, lint, workflow-pin, and policy scanners;
-- explicit framework discovery with generated config shown before execution;
-- JUnit output and stable JSON Schema;
-- report comparison across commits.
+- built-in bounded packs for test, type-check, lint, workflow-pin, and policy guards;
+- explicit script discovery with complete generated config visible through `init --dry-run`;
+- JUnit output alongside Markdown, JSON, and SARIF;
+- stable v1 JSON Schemas for configuration and report evidence;
+- report comparison across commits with optional regression exit status.
 
 ## v0.3 — Sensor coverage
 
