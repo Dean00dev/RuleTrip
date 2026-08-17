@@ -14,6 +14,15 @@ function escapeCell(value) {
   return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
+function escapeXml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
 export function buildMarkdown(report) {
   const lines = [
     '# RuleTrip report',
@@ -119,6 +128,34 @@ export function buildSarif(report) {
   };
 }
 
+export function buildJUnit(report) {
+  const cases = [];
+  for (const guard of report.guards) {
+    if (guard.canaries.length === 0) {
+      const detail = escapeXml(guard.reason || guard.status);
+      if (guard.status === STATUS.INCONCLUSIVE) {
+        cases.push(`  <testcase classname="${escapeXml(guard.id)}" name="clean baseline"><skipped message="${detail}"/></testcase>`);
+      } else if (guard.status === STATUS.BROKEN || guard.status === STATUS.DEAD) {
+        cases.push(`  <testcase classname="${escapeXml(guard.id)}" name="clean baseline"><failure message="${detail}"/></testcase>`);
+      } else {
+        cases.push(`  <testcase classname="${escapeXml(guard.id)}" name="clean baseline"/>`);
+      }
+      continue;
+    }
+    for (const canary of guard.canaries) {
+      const attrs = `classname="${escapeXml(guard.id)}" name="${escapeXml(canary.id)}"`;
+      const detail = escapeXml(canary.reason || canary.status);
+      if (canary.status === STATUS.ALIVE) cases.push(`  <testcase ${attrs}/>`);
+      else if (canary.status === STATUS.INCONCLUSIVE) cases.push(`  <testcase ${attrs}><skipped message="${detail}"/></testcase>`);
+      else cases.push(`  <testcase ${attrs}><failure message="${detail}"/></testcase>`);
+    }
+  }
+  const tests = cases.length;
+  const failures = report.counts.dead + report.counts.broken;
+  const skipped = report.counts.inconclusive;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="RuleTrip" tests="${tests}" failures="${failures}" skipped="${skipped}">\n${cases.join('\n')}\n</testsuite>\n`;
+}
+
 export async function writeReports(root, reportDir, report) {
   const relative = normalizeRelativePath(reportDir, 'report directory');
   const { absolute: directory } = await resolveRepositoryPath(root, relative, 'report directory');
@@ -127,13 +164,15 @@ export async function writeReports(root, reportDir, report) {
   const paths = {
     json: path.join(directory, 'ruletrip-report.json'),
     markdown: path.join(directory, 'ruletrip-summary.md'),
-    sarif: path.join(directory, 'ruletrip-results.sarif')
+    sarif: path.join(directory, 'ruletrip-results.sarif'),
+    junit: path.join(directory, 'ruletrip-results.junit.xml')
   };
   const markdownText = buildMarkdown(report);
   await Promise.all([
     fs.writeFile(paths.json, `${JSON.stringify(report, null, 2)}\n`, 'utf8'),
     fs.writeFile(paths.markdown, markdownText, 'utf8'),
-    fs.writeFile(paths.sarif, `${JSON.stringify(buildSarif(report), null, 2)}\n`, 'utf8')
+    fs.writeFile(paths.sarif, `${JSON.stringify(buildSarif(report), null, 2)}\n`, 'utf8'),
+    fs.writeFile(paths.junit, buildJUnit(report), 'utf8')
   ]);
   return { ...paths, markdownText };
 }
