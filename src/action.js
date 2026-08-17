@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import {
   DEFAULT_CONFIG,
   DEFAULT_REPORT_DIR
@@ -28,6 +27,7 @@ async function setOutputs(report, reports) {
     `inconclusive=${report.counts.inconclusive}`,
     `json_report=${reports.json}`,
     `sarif_report=${reports.sarif}`,
+    `junit_report=${reports.junit}`,
     `markdown_report=${reports.markdown}`
   ]);
 }
