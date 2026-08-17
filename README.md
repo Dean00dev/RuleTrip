@@ -69,12 +69,34 @@ An **ALIVE** result is deliberately modest: it does not certify correctness, sec
 RuleTrip requires Node.js 20+ and Git.
 
 ```bash
-npm install --save-dev github:Dean00dev/RuleTrip#v0.1.0
+npm install --save-dev github:Dean00dev/RuleTrip#v0.2.0
+npx ruletrip init --dry-run
 npx ruletrip init
 npx ruletrip run
 ```
 
-`ruletrip init` detects an existing `npm test` script and creates a starter `.ruletrip.json`. Review that file—the command and canary are executable policy, not magic defaults.
+`init --dry-run` is side-effect free. It shows the detected guard commands, canary packs, test directory, and complete generated configuration before anything is written. Review that output: commands and canaries are executable policy, not magic defaults.
+
+## v0.2 canary packs and discovery
+
+RuleTrip v0.2 ships five bounded canary-pack families:
+
+- **test** — deliberate failing-test discovery;
+- **typecheck** — deliberate TypeScript type mismatch;
+- **lint** — deliberate JavaScript parse failure;
+- **workflow-pin** — inert workflow containing an intentionally unpinned Action reference;
+- **policy** — inert repository-policy marker.
+
+Run:
+
+```bash
+npx ruletrip presets
+npx ruletrip init --dry-run
+```
+
+Starter discovery recognises matching `package.json` scripts and generates one guard per detected pack. It never claims that a preset is universally effective: include patterns and scanner policy still belong to the repository. A canary that escapes is evidence about that exact experiment, not a certification statement.
+
+See [Canary Packs](docs/CANARY_PACKS.md) for detection names, mutation details, and boundaries.
 
 ### Minimal configuration
 
@@ -129,7 +151,7 @@ jobs:
 
       - run: npm ci
 
-      - uses: Dean00dev/RuleTrip@v0.1.0
+      - uses: Dean00dev/RuleTrip@v0.2.0
         with:
           fail_on: dead,broken,inconclusive
 ```
@@ -147,17 +169,43 @@ RuleTrip refuses to run under `pull_request_target`. Repository commands and `.r
 | `replace` | `path`, `search`, `replacement` | Replaces an exact string; fails inconclusively if absent. |
 | `delete` | `path` | Deletes a file in the disposable worktree. |
 
-Paths must remain inside the worktree, cannot target `.git`, and cannot cross a symlink into a shared external directory. See [Configuration](docs/CONFIGURATION.md) for every field and examples for tests, type checks, lint rules, unpinned Actions, forbidden files, and synthetic secret canaries.
+Paths must remain inside the worktree, cannot target `.git`, and cannot cross a symlink into a shared external directory. See [Configuration](docs/CONFIGURATION.md) for every field and examples.
 
 ## Reports
 
-Each run writes:
+Each run writes four evidence formats:
 
 - `ruletrip-summary.md` — human-readable experiment table;
 - `ruletrip-report.json` — machine-readable evidence;
-- `ruletrip-results.sarif` — findings for code-scanning consumers.
+- `ruletrip-results.sarif` — findings for code-scanning consumers;
+- `ruletrip-results.junit.xml` — JUnit-compatible CI/test-report evidence.
 
-The Action also writes the Markdown report to the GitHub job summary and exposes counts and report paths as outputs. Command stdout/stderr is excluded from persisted reports by default to reduce accidental secret leakage.
+Stable v1 schemas are published in [`schema/`](schema/):
+
+- `ruletrip-config.schema.json`;
+- `ruletrip-report.schema.json`.
+
+The Action writes the Markdown report to the GitHub job summary and exposes all report paths as outputs. Command stdout/stderr is excluded from persisted reports by default to reduce accidental secret leakage.
+
+## Compare harness health across commits
+
+RuleTrip v0.2 can compare two saved JSON reports without re-running either commit:
+
+```bash
+npx ruletrip compare \
+  --before reports/main/ruletrip-report.json \
+  --after reports/pr/ruletrip-report.json
+```
+
+To make an observed regression fail the command:
+
+```bash
+npx ruletrip compare --before before.json --after after.json --fail-on-regression
+```
+
+Comparison uses stable `guard-id/canary-id` identities and reports regressions, improvements, additions, removals, and unchanged experiments. It compares recorded evidence; it does not infer why a guard changed.
+
+See [Report Comparison](docs/REPORT_COMPARISON.md).
 
 ## Security boundary
 
@@ -176,10 +224,11 @@ Read the full [Threat Model](docs/THREAT_MODEL.md) before using RuleTrip in priv
 - Git worktrees require a repository with at least one commit.
 - RuleTrip measures process exit behaviour, not semantic correctness.
 - A poorly chosen canary can produce a misleading **ALIVE** result.
+- Built-in pack discovery is intentionally conservative and script-name based.
 - Shared dependency paths trade isolation for speed.
-- v0.1 runs experiments sequentially and supports file mutations only.
+- v0.2 runs experiments sequentially and supports file mutations only.
 
-These are product boundaries, not hidden caveats. See [Design](docs/DESIGN.md) for the reasoning and [Roadmap](docs/ROADMAP.md) for planned work.
+These are product boundaries, not hidden caveats. See [Design](docs/DESIGN.md) and [Roadmap](docs/ROADMAP.md).
 
 ## Contributing
 
