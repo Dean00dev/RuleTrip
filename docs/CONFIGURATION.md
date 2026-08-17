@@ -1,6 +1,19 @@
 # Configuration
 
-RuleTrip reads `.ruletrip.json` by default. JSON keeps the runtime dependency-free and makes the executed policy explicit.
+RuleTrip reads `.ruletrip.json` by default. JSON keeps the runtime dependency-free and makes the executed policy explicit. The published v1 schema is [`schema/ruletrip-config.schema.json`](../schema/ruletrip-config.schema.json).
+
+## Discovery before writing
+
+Use:
+
+```text
+ruletrip presets
+ruletrip init --dry-run
+```
+
+`init --dry-run` is side-effect free and prints every detected guard preset plus the complete configuration it would write. v0.2 recognises bounded package-script names for test, type-check, lint, workflow-pin, and policy guards. See [Canary Packs](CANARY_PACKS.md).
+
+If no supported command is found, RuleTrip writes no invented command during preview; the generated starter contains `REPLACE_WITH_YOUR_GUARD_COMMAND` and requires manual review.
 
 ## Top level
 
@@ -93,42 +106,18 @@ Exact matching makes drift visible. If `search` is absent, the experiment is **I
 }
 ```
 
-## Policy-scanner examples
+## Synthetic policy material
 
-### Unpinned GitHub Action
-
-Pair this canary with the command for your existing workflow policy scanner:
-
-```json
-{
-  "id": "unpinned-action",
-  "type": "create",
-  "path": ".github/workflows/ruletrip-unpinned.yml",
-  "content": "name: RuleTrip canary\non: workflow_dispatch\njobs:\n  canary:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
-}
-```
-
-### Forbidden file
-
-```json
-{
-  "id": "forbidden-key",
-  "type": "create",
-  "path": "ruletrip-canary.pem",
-  "content": "RULETRIP_INERT_TEST_MATERIAL_NOT_A_REAL_KEY\n"
-}
-```
-
-### Synthetic secret pattern
-
-Use a scanner-specific documented test token. Never use a live or previously live credential. Label the content as synthetic and scope it to the disposable experiment.
+Use scanner-specific documented test tokens where appropriate. Never use a live or previously live credential. Label synthetic data clearly and scope it to the disposable experiment.
 
 ## CLI
 
 ```text
-ruletrip init [--force]
+ruletrip init [--force] [--dry-run]
+ruletrip presets
 ruletrip list [--config PATH]
 ruletrip run [--config PATH] [--report-dir PATH] [--fail-on LIST]
+ruletrip compare --before REPORT.json --after REPORT.json [--fail-on-regression] [--json]
 ```
 
 `--fail-on` accepts a comma-separated subset of `dead`, `broken`, and `inconclusive`. **ALIVE** never fails the run.
