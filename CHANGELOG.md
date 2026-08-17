@@ -4,6 +4,12 @@ All notable changes to RuleTrip are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- side-effect-free starter configuration discovery for `ruletrip init`;
+- `ruletrip init --dry-run` to preview the detected guard command, test directory, and complete generated configuration without writing `.ruletrip.json`;
+- explicit discovery provenance showing whether the starter command came from `package.json scripts.test` or still requires manual configuration.
+
 ## [0.1.0] - 2026-08-14
 
 ### Added

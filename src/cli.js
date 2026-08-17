@@ -12,7 +12,7 @@ import {
 import { loadConfig } from './config.js';
 import { runRuleTrip, shouldFail } from './engine.js';
 import { findGitRoot } from './git.js';
-import { createStarterConfig } from './init.js';
+import { buildStarterConfig, createStarterConfig } from './init.js';
 import { writeReports } from './reports.js';
 
 const HELP = `RuleTrip ${VERSION}
@@ -20,7 +20,7 @@ const HELP = `RuleTrip ${VERSION}
 Mutation testing for repository guardrails.
 
 Usage:
-  ruletrip init [--force]
+  ruletrip init [--force] [--dry-run]
   ruletrip run [--config PATH] [--report-dir PATH] [--fail-on LIST]
   ruletrip list [--config PATH]
   ruletrip --version
@@ -37,6 +37,7 @@ function parseOptions(args) {
   for (let index = 0; index < args.length; index += 1) {
     const token = args[index];
     if (token === '--force') options.force = true;
+    else if (token === '--dry-run') options.dry_run = true;
     else if (token === '--config' || token === '--report-dir' || token === '--fail-on') {
       const value = args[index + 1];
       if (!value || value.startsWith('--')) throw new Error(`${token} requires a value`);
@@ -79,6 +80,15 @@ function printResult(report) {
   }
 }
 
+function printInitPreview(starter) {
+  process.stdout.write('RuleTrip init preview\n');
+  process.stdout.write(`Detected guard command: ${starter.discovery.command}\n`);
+  process.stdout.write(`Command source: ${starter.discovery.commandSource}\n`);
+  process.stdout.write(`Detected test directory: ${starter.discovery.testDirectory}\n\n`);
+  process.stdout.write(`${JSON.stringify(starter.config, null, 2)}\n`);
+  process.stdout.write('\nPreview only: no files written.\n');
+}
+
 export async function runCli(argv = process.argv.slice(2)) {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h' || argv[0] === 'help') {
     process.stdout.write(HELP);
@@ -91,11 +101,29 @@ export async function runCli(argv = process.argv.slice(2)) {
 
   const command = argv[0];
   const options = parseOptions(argv.slice(1));
+  if (options.dry_run && command !== 'init') {
+    throw new Error('--dry-run is only valid with init');
+  }
+  if (options.force && command !== 'init') {
+    throw new Error('--force is only valid with init');
+  }
+  if (options.dry_run && options.force) {
+    throw new Error('--dry-run and --force cannot be used together');
+  }
+
   const root = await findGitRoot();
 
   if (command === 'init') {
+    if (options.dry_run) {
+      const starter = await buildStarterConfig(root);
+      printInitPreview(starter);
+      return 0;
+    }
+
     const result = await createStarterConfig(root, options);
     process.stdout.write(`Created ${path.relative(root, result.path)}\n`);
+    process.stdout.write(`Detected guard command: ${result.discovery.command}\n`);
+    process.stdout.write(`Command source: ${result.discovery.commandSource}\n`);
     if (result.needsCommand) {
       process.stdout.write('Replace REPLACE_WITH_YOUR_GUARD_COMMAND before running RuleTrip.\n');
     }

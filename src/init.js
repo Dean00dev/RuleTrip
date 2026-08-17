@@ -17,17 +17,12 @@ async function chooseTestDirectory(root) {
   return 'test';
 }
 
-export async function createStarterConfig(root, { force = false } = {}) {
-  const target = path.join(root, DEFAULT_CONFIG);
-  if (!force && (await exists(target))) {
-    throw new Error(`${DEFAULT_CONFIG} already exists; pass --force to replace it`);
-  }
-
+export async function buildStarterConfig(root) {
   let packageJson = null;
   try {
     packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   } catch {
-    // A language-neutral starter is written below.
+    // A language-neutral starter is returned below.
   }
 
   const testDirectory = await chooseTestDirectory(root);
@@ -57,9 +52,27 @@ export async function createStarterConfig(root, { force = false } = {}) {
     ]
   };
 
-  await fs.writeFile(target, `${JSON.stringify(config, null, 2)}\n`, {
+  return {
+    config,
+    needsCommand: !packageJson?.scripts?.test,
+    discovery: {
+      testDirectory,
+      command,
+      commandSource: packageJson?.scripts?.test ? 'package.json scripts.test' : 'manual configuration required'
+    }
+  };
+}
+
+export async function createStarterConfig(root, { force = false } = {}) {
+  const target = path.join(root, DEFAULT_CONFIG);
+  if (!force && (await exists(target))) {
+    throw new Error(`${DEFAULT_CONFIG} already exists; pass --force to replace it`);
+  }
+
+  const starter = await buildStarterConfig(root);
+  await fs.writeFile(target, `${JSON.stringify(starter.config, null, 2)}\n`, {
     encoding: 'utf8',
     flag: force ? 'w' : 'wx'
   });
-  return { path: target, needsCommand: !packageJson?.scripts?.test };
+  return { path: target, ...starter };
 }
