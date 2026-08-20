@@ -13,6 +13,13 @@ function input(name, fallback) {
   return process.env[`INPUT_${name.toUpperCase()}`]?.trim() || fallback;
 }
 
+function escapeWorkflowCommand(value) {
+  return String(value)
+    .replaceAll('%', '%25')
+    .replaceAll('\r', '%0D')
+    .replaceAll('\n', '%0A');
+}
+
 async function appendEnvironmentFile(file, lines) {
   if (!file) return;
   await fs.appendFile(file, `${lines.join('\n')}\n`, 'utf8');
@@ -25,6 +32,11 @@ async function setOutputs(report, reports) {
     `dead=${report.counts.dead}`,
     `broken=${report.counts.broken}`,
     `inconclusive=${report.counts.inconclusive}`,
+    `sensors_configured=${report.attribution.sensorsConfigured}`,
+    `sensors_matched=${report.attribution.sensorsMatched}`,
+    `sensors_missing=${report.attribution.sensorsMissing}`,
+    `sensors_unattributed=${report.attribution.sensorsUnattributed}`,
+    `exit_only=${report.attribution.exitOnly}`,
     `json_report=${reports.json}`,
     `sarif_report=${reports.sarif}`,
     `junit_report=${reports.junit}`,
@@ -50,7 +62,7 @@ async function main() {
     configPath: loadedPath,
     progress: (event) => {
       const name = event.phase === 'baseline' ? event.guard.name : event.canary.name;
-      process.stdout.write(`::group::RuleTrip ${event.phase}: ${name}\n::endgroup::\n`);
+      process.stdout.write(`RuleTrip ${event.phase}: ${name.replaceAll('\r', ' ').replaceAll('\n', ' ')}\n`);
     }
   });
   const reports = await writeReports(root, reportDir, report);
@@ -64,6 +76,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`::error title=RuleTrip failed::${error.message}\n`);
+  process.stderr.write(`::error title=RuleTrip failed::${escapeWorkflowCommand(error.message)}\n`);
   process.exitCode = 2;
 });

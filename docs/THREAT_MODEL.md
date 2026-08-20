@@ -45,7 +45,11 @@ Secret-scanner experiments should use vendor-documented test values or visibly i
 
 ## Report honesty
 
-An **ALIVE** result states only that one command returned non-zero after one mutation. It does not establish causality beyond that process response. A command may fail for an unrelated reason, so canaries should be minimal and guard output should be inspected during initial setup.
+An exit-only **ALIVE** result states only that one command returned non-zero after one mutation. It does not establish causality beyond that process response.
+
+v0.3 sensors can require a declared literal to be absent on every clean control and present in every mutation confirmation. This differential check reduces—but does not eliminate—unrelated-failure attribution: another mutation-only failure could emit the same literal, and the guard itself controls its output. Use specific inert markers and minimal canaries. RuleTrip deliberately records sensor match facts rather than raw command output. Truncated clean output is inconclusive because absence cannot be established.
+
+Repeated confirmation exposes some flaky responses but is not statistical reliability evidence. Two matching runs are two observations, not proof of future behaviour.
 
 ## Reporting a vulnerability
 

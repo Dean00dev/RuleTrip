@@ -14,6 +14,17 @@ function escapeCell(value) {
   return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
+function escapeHeading(value) {
+  return String(value)
+    .replaceAll('\r', ' ')
+    .replaceAll('\n', ' ')
+    .replace(/([\\`*_{}\[\]()<>#+.!|-])/gu, '\\$1');
+}
+
+function escapeInlineCode(value) {
+  return String(value).replaceAll('\r', ' ').replaceAll('\n', ' ').replaceAll('`', '\\`');
+}
+
 function escapeXml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -21,6 +32,18 @@ function escapeXml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
+}
+
+function evidenceSummary(canary) {
+  const required = canary.confirmation?.requiredRuns ?? 1;
+  const completed = canary.confirmation?.completedRuns ?? (canary.execution ? 1 : 0);
+  let sensor = 'exit only';
+  if (canary.sensor?.configured) {
+    if (canary.sensor.matched) sensor = 'sensor attributed';
+    else if (!canary.sensor.baselineClear) sensor = 'sensor baseline unclear';
+    else sensor = 'sensor missing';
+  }
+  return `${completed}/${required}; ${sensor}`;
 }
 
 export function buildMarkdown(report) {
@@ -40,20 +63,27 @@ export function buildMarkdown(report) {
     `| 🛠️ Broken | ${report.counts.broken} |`,
     `| ❓ Inconclusive | ${report.counts.inconclusive} |`,
     '',
+    '## Attribution coverage',
+    '',
+    `Sensors matched: **${report.attribution?.sensorsMatched ?? 0}/${report.attribution?.sensorsConfigured ?? 0}**  `,
+    `Sensors missing: **${report.attribution?.sensorsMissing ?? 0}**  `,
+    `Sensors unattributed at baseline: **${report.attribution?.sensorsUnattributed ?? 0}**  `,
+    `Exit-only canaries: **${report.attribution?.exitOnly ?? 0}**`,
+    '',
     '## Experiments',
     ''
   ];
 
   for (const guard of report.guards) {
-    lines.push(`### ${ICON[guard.status]} ${guard.name}`, '');
-    lines.push(`Command: \`${guard.command.replaceAll('`', '\\`')}\``, '');
+    lines.push(`### ${ICON[guard.status]} ${escapeHeading(guard.name)}`, '');
+    lines.push(`Command: \`${escapeInlineCode(guard.command)}\``, '');
     if (guard.reason) lines.push(`_${guard.reason}_`, '');
     if (guard.canaries.length > 0) {
-      lines.push('| Canary | Mutation | Target | Result | Reason |');
-      lines.push('| --- | --- | --- | --- | --- |');
+      lines.push('| Canary | Mutation | Target | Evidence | Result | Reason |');
+      lines.push('| --- | --- | --- | --- | --- | --- |');
       for (const canary of guard.canaries) {
         lines.push(
-          `| ${escapeCell(canary.name)} | \`${escapeCell(canary.type)}\` | \`${escapeCell(canary.target)}\` | ${ICON[canary.status]} \`${canary.status.toUpperCase()}\` | ${escapeCell(canary.reason)} |`
+          `| ${escapeCell(canary.name)} | \`${escapeCell(canary.type)}\` | \`${escapeCell(canary.target)}\` | ${escapeCell(evidenceSummary(canary))} | ${ICON[canary.status]} \`${canary.status.toUpperCase()}\` | ${escapeCell(canary.reason)} |`
         );
       }
       lines.push('');
@@ -63,7 +93,7 @@ export function buildMarkdown(report) {
   lines.push(
     '## What this proves',
     '',
-    'An **ALIVE** result proves only that the configured command returned a non-zero exit code for that exact planted violation in this commit. It does not prove overall correctness, security, test quality, or coverage.',
+    'An **ALIVE** result proves only that the configured command returned a non-zero exit code for that exact planted violation in this commit. When a sensor is configured, it also proves that the declared literal signal was absent from every bounded clean-control capture and appeared in every bounded mutation capture. It does not prove overall correctness, security, test quality, or coverage.',
     '',
     'Command output is intentionally excluded from persisted reports to reduce accidental secret leakage.',
     ''
@@ -100,7 +130,17 @@ export function buildSarif(report) {
             }
           }
         ],
-        properties: { guard: guard.id, canary: canary.id, mutation: canary.type }
+        properties: {
+          guard: guard.id,
+          canary: canary.id,
+          mutation: canary.type,
+          confirmationRuns: canary.confirmation?.requiredRuns ?? 1,
+          sensorConfigured: canary.sensor?.configured ?? false,
+          sensorBaselineClear: canary.sensor?.baselineClear ?? null,
+          sensorBaselineMatchedRuns: canary.sensor?.baselineMatchedRuns ?? 0,
+          sensorMutationMatchedRuns: canary.sensor?.mutationMatchedRuns ?? 0,
+          sensorMatched: canary.sensor?.matched ?? null
+        }
       });
     }
   }

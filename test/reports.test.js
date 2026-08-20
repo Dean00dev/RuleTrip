@@ -6,17 +6,29 @@ import { buildJUnit, buildMarkdown, buildSarif, writeReports } from '../src/repo
 import { tempDirectory } from '../test-support/helpers.js';
 
 const report = {
-  tool: { name: 'RuleTrip', version: '0.2.0' },
+  tool: { name: 'RuleTrip', version: '0.3.0' },
   generatedAt: '2026-08-17T00:00:00.000Z',
   source: { commit: 'a'.repeat(40), configPath: '.ruletrip.json' },
   conclusion: 'dead',
   counts: { alive: 0, dead: 1, broken: 0, inconclusive: 0 },
+  attribution: {
+    sensorsConfigured: 1, sensorsMatched: 0, sensorsMissing: 1, sensorsUnattributed: 0, exitOnly: 0
+  },
   guards: [{
     id: 'tests', name: 'Tests', command: 'npm test', status: 'dead', reason: null,
     baseline: { exitCode: 0 },
     canaries: [{
       id: 'failing', name: 'Failing | test', type: 'create', target: 'test/canary.js',
-      status: 'dead', reason: 'guard returned zero after the controlled violation', execution: { exitCode: 0 }
+      status: 'dead', reason: 'guard returned zero after the controlled violation', execution: { exitCode: 0 },
+      confirmation: { requiredRuns: 2, completedRuns: 2, stable: true },
+      sensor: {
+        configured: true,
+        stream: 'combined',
+        baselineClear: true,
+        baselineMatchedRuns: 0,
+        mutationMatchedRuns: 0,
+        matched: false
+      }
     }]
   }]
 };
@@ -25,6 +37,9 @@ test('Markdown states bounded proof and escapes table cells', () => {
   const markdown = buildMarkdown(report);
   assert.match(markdown, /Failing \\| test/u);
   assert.match(markdown, /proves only that the configured command/u);
+  assert.match(markdown, /2\/2; sensor missing/u);
+  assert.match(markdown, /Sensors matched: \*\*0\/1\*\*/u);
+  assert.match(markdown, /Sensors unattributed at baseline: \*\*0\*\*/u);
   assert.match(markdown, /output is intentionally excluded/u);
 });
 

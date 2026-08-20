@@ -10,11 +10,17 @@ The roadmap is ordered by evidence value, not feature count.
 - stable v1 JSON Schemas for configuration and report evidence;
 - report comparison across commits with optional regression exit status.
 
-## v0.3 — Sensor coverage
+## v0.3 — Sensor coverage — shipped 2026-08-20
 
-- map canaries to the guards expected to catch them;
-- detect accidental cross-guard failures;
-- optional two-step confirmation to reduce unrelated non-zero classifications;
+- differential stdout, stderr, or combined-output sensors for expected guard signals;
+- one-to-five-run confirmation in fresh worktrees for baselines and canaries;
+- conservative treatment of mixed outcomes and missing sensors as inconclusive;
+- explicit confirmation and attribution facts in Markdown, JSON, and SARIF reports;
+- Action-as-an-Action CI on Linux, macOS, and Windows.
+
+Deferred from the original v0.3 research list because it needs a separate schema boundary:
+
+- cross-guard mutation matrices;
 - custom patch canaries with checksum-bound source context.
 
 ## Later research

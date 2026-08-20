@@ -1,6 +1,6 @@
 # Canary Packs
 
-RuleTrip v0.2 includes a small built-in catalogue of **canary pack families**. A pack is a reviewed mutation template plus conservative discovery metadata. Packs do not certify a guard and they do not replace repository-specific threat modelling.
+RuleTrip includes a small built-in catalogue of **canary pack families**. A pack is a reviewed mutation template plus conservative discovery metadata. Packs do not certify a guard and they do not replace repository-specific threat modelling.
 
 Run `ruletrip presets` to inspect the catalogue and `ruletrip init --dry-run` to see which packs would be selected for the current repository without writing a file.
 
@@ -19,6 +19,8 @@ The shipped templates are intentionally inert and declarative. The workflow-pin 
 Pack discovery is deliberately narrow. RuleTrip does not guess arbitrary script semantics. If no supported script is found, `init` generates one explicit manual guard with `REPLACE_WITH_YOUR_GUARD_COMMAND` rather than inventing a command.
 
 A preset can still be **DEAD** because the repository command excludes the canary path, because the scanner policy does not cover that defect, or because the command is not the guard the user thought it was. That is the experiment RuleTrip is meant to expose.
+
+In v0.3, the test, type-check, lint, and workflow-pin starter canaries include literal sensors based on their unique marker or path. The generic policy pack remains exit-only because RuleTrip cannot know how a repository-specific policy command describes the marker. Add a precise sensor after observing and reviewing that command's stable output.
 
 ## Adding a repository-specific canary
 

@@ -15,7 +15,7 @@
 
 Your tests pass. Your linter passes. Your policy scanner passes. But would any of them notice the failure they exist to catch?
 
-RuleTrip answers that narrower, harder question by planting a controlled violation in a disposable Git worktree and running the real guard command. If the command still exits zero, the guard is **DEAD** for that canary—even though CI was green.
+RuleTrip answers that narrower, harder question by planting a controlled violation in a disposable Git worktree and running the real guard command. If the command still exits zero, the guard is **DEAD** for that canary—even though CI was green. Optional differential sensors and repeated confirmation distinguish the expected alarm from an unrelated or flaky failure.
 
 ```text
 [baseline] Node test discovery
@@ -42,13 +42,18 @@ RuleTrip is model-agnostic. It needs no API key, model, network service, or tele
 ```mermaid
 flowchart TD
     A["Clean commit"] --> B["Disposable worktree"]
-    B --> C{"Baseline passes?"}
-    C -- No --> D["BROKEN"]
-    C -- Yes --> E["Plant one canary"]
+    B --> C{"Repeated controls"}
+    C -- "all pass" --> E["Plant one canary"]
+    C -- "all fail" --> D["BROKEN"]
+    C -- "mixed or error" --> J["INCONCLUSIVE"]
     E --> F["Run real guard"]
-    F --> G{"Non-zero exit?"}
-    G -- Yes --> H["ALIVE"]
-    G -- No --> I["DEAD"]
+    F --> G{"Repeated response"}
+    G -- "all zero" --> I["DEAD"]
+    G -- "mixed or error" --> J
+    G -- "all non-zero" --> H{"Sensor contract"}
+    H -- "none" --> K["ALIVE · exit-only"]
+    H -- "clean-absent + mutation-present" --> L["ALIVE · attributed"]
+    H -- "otherwise" --> J
 ```
 
 Every canary gets a fresh detached worktree. RuleTrip applies only declarative file mutations; it does not apply model-generated patches or mutate the checked-out commit.
@@ -57,19 +62,19 @@ Every canary gets a fresh detached worktree. RuleTrip applies only declarative f
 
 | Outcome | Meaning |
 | --- | --- |
-| **ALIVE** | The configured command rejected that exact planted violation. |
+| **ALIVE** | Every configured confirmation rejected the planted violation; when configured, the sensor was absent on clean controls and present on mutations. |
 | **DEAD** | The configured command returned zero after the violation. This is a false green. |
 | **BROKEN** | The command already failed on the clean baseline, so the experiment has no valid control. |
 | **INCONCLUSIVE** | A timeout, mutation error, or infrastructure problem prevented safe classification. |
 
-An **ALIVE** result is deliberately modest: it does not certify correctness, security, coverage, or the quality of the guard. It proves one observable response to one declared canary at one commit.
+An **ALIVE** result is deliberately modest: it does not certify correctness, security, coverage, or the quality of the guard. It proves a bounded observable response to one declared canary at one commit. When a sensor is configured, `ALIVE` also requires the literal to be absent from every clean-control capture and present in every mutation capture.
 
 ## Quick start
 
 RuleTrip requires Node.js 20+ and Git.
 
 ```bash
-npm install --save-dev github:Dean00dev/RuleTrip#v0.2.0
+npm install --save-dev github:Dean00dev/RuleTrip#v0.3.0
 npx ruletrip init --dry-run
 npx ruletrip init
 npx ruletrip run
@@ -77,9 +82,49 @@ npx ruletrip run
 
 `init --dry-run` is side-effect free. It shows the detected guard commands, canary packs, test directory, and complete generated configuration before anything is written. Review that output: commands and canaries are executable policy, not magic defaults.
 
-## v0.2 canary packs and discovery
+## v0.3 sensor attribution and confirmation
 
-RuleTrip v0.2 ships five bounded canary-pack families:
+Any non-zero process can look like successful detection if the build is flaky or another tool fails first. RuleTrip v0.3 can require a literal signal from bounded command output and repeat the clean control plus each mutation in fresh worktrees.
+
+```json
+{
+  "version": 1,
+  "defaults": {
+    "confirmRuns": 2
+  },
+  "guards": [
+    {
+      "id": "tests",
+      "command": "npm test",
+      "canaries": [
+        {
+          "id": "failing-test",
+          "type": "create",
+          "path": "test/ruletrip-canary.test.js",
+          "content": "throw new Error('RULETRIP_EXPECTED_FAILURE');\n",
+          "sensor": {
+            "stream": "combined",
+            "includes": "RULETRIP_EXPECTED_FAILURE"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Classification is intentionally conservative:
+
+- every repeated baseline must pass;
+- every repeated canary run must reject the mutation;
+- every configured sensor must be absent from all bounded clean-control captures and match all bounded mutation captures;
+- mixed exits, missing sensors, timeouts, or infrastructure failures are **INCONCLUSIVE**.
+
+The sensor is a literal, case-sensitive in-memory match against `stdout`, `stderr`, or `combined`; raw command output is still excluded from persisted reports. A pre-existing clean signal or truncated clean capture is **INCONCLUSIVE**, because absence was not established. Configurations without a sensor remain backward compatible but provide exit-only evidence.
+
+## Canary packs and discovery
+
+RuleTrip ships five bounded canary-pack families:
 
 - **test** — deliberate failing-test discovery;
 - **typecheck** — deliberate TypeScript type mismatch;
@@ -108,13 +153,18 @@ See [Canary Packs](docs/CANARY_PACKS.md) for detection names, mutation details, 
       "id": "tests",
       "name": "Test discovery",
       "command": "npm test",
+      "confirmRuns": 2,
       "canaries": [
         {
           "id": "failing-test",
           "name": "A deliberately failing test is discovered",
           "type": "create",
           "path": "test/ruletrip-canary.test.js",
-          "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\ntest('RuleTrip canary', () => assert.fail('RULETRIP_CANARY'));\n"
+          "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\ntest('RuleTrip canary', () => assert.fail('RULETRIP_CANARY'));\n",
+          "sensor": {
+            "stream": "combined",
+            "includes": "RULETRIP_CANARY"
+          }
         }
       ]
     }
@@ -122,7 +172,7 @@ See [Canary Packs](docs/CANARY_PACKS.md) for detection names, mutation details, 
 }
 ```
 
-The baseline must exit `0`. The same command then runs against each fresh mutation. A non-zero canary run is **ALIVE**; a zero canary run is **DEAD**.
+Every clean baseline must exit `0`. The same command then runs against each fresh mutation. Consistent zero exits are **DEAD**; mixed responses are **INCONCLUSIVE**; consistent non-zero exits are **ALIVE** only when any configured sensor contract also holds.
 
 ## GitHub Action
 
@@ -151,7 +201,7 @@ jobs:
 
       - run: npm ci
 
-      - uses: Dean00dev/RuleTrip@v0.2.0
+      - uses: Dean00dev/RuleTrip@v0.3.0
         with:
           fail_on: dead,broken,inconclusive
 ```
@@ -186,6 +236,8 @@ Stable v1 schemas are published in [`schema/`](schema/):
 - `ruletrip-report.schema.json`.
 
 The Action writes the Markdown report to the GitHub job summary and exposes all report paths as outputs. Command stdout/stderr is excluded from persisted reports by default to reduce accidental secret leakage.
+
+Reports also state attribution coverage explicitly: configured sensors, differentially attributed matches, missing mutation signals, signals that were already present or obscured on clean controls, and exit-only canaries. This prevents a fully sensor-attributed run and a weaker or contaminated result from looking identical at a glance.
 
 ## Compare harness health across commits
 
@@ -226,7 +278,7 @@ Read the full [Threat Model](docs/THREAT_MODEL.md) before using RuleTrip in priv
 - A poorly chosen canary can produce a misleading **ALIVE** result.
 - Built-in pack discovery is intentionally conservative and script-name based.
 - Shared dependency paths trade isolation for speed.
-- v0.2 runs experiments sequentially and supports file mutations only.
+- v0.3 runs experiments sequentially and supports file mutations only.
 
 These are product boundaries, not hidden caveats. See [Design](docs/DESIGN.md) and [Roadmap](docs/ROADMAP.md).
 

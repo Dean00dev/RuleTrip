@@ -1,4 +1,4 @@
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 export const STATUS = Object.freeze({
   ALIVE: 'alive',
@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG = '.ruletrip.json';
 export const DEFAULT_REPORT_DIR = 'ruletrip-report';
 export const DEFAULT_TIMEOUT_MS = 120_000;
 export const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024;
+export const DEFAULT_CONFIRM_RUNS = 1;
 export const DEFAULT_FAIL_ON = Object.freeze([
   STATUS.DEAD,
   STATUS.BROKEN,

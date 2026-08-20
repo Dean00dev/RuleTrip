@@ -12,7 +12,7 @@ export function normalizeRelativePath(value, label = 'path') {
   }
 
   const portable = value.replaceAll('\\', '/');
-  if (portable.includes('\0') || path.posix.isAbsolute(portable) || /^[A-Za-z]:\//u.test(portable)) {
+  if (/[\u0000-\u001F\u007F]/u.test(portable) || path.posix.isAbsolute(portable) || /^[A-Za-z]:\//u.test(portable)) {
     throw new Error(`${label} must stay inside the repository`);
   }
 

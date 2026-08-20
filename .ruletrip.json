@@ -3,6 +3,7 @@
   "defaults": {
     "timeoutMs": 120000,
     "maxOutputBytes": 65536,
+    "confirmRuns": 2,
     "linkPaths": [
       "node_modules"
     ]
@@ -18,7 +19,11 @@
           "name": "A deliberately failing test is discovered",
           "type": "create",
           "path": "test/ruletrip-canary.test.js",
-          "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n"
+          "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n",
+          "sensor": {
+            "stream": "combined",
+            "includes": "RULETRIP_CANARY: deliberate failure"
+          }
         }
       ]
     },
@@ -32,7 +37,11 @@
           "name": "A planted syntax error is rejected",
           "type": "append",
           "path": "src/constants.js",
-          "content": "\nRULETRIP deliberate syntax failure !!!\n"
+          "content": "\nRULETRIP_SENSOR_SYNTAX deliberate syntax failure !!!\n",
+          "sensor": {
+            "stream": "combined",
+            "includes": "RULETRIP_SENSOR_SYNTAX"
+          }
         }
       ]
     }

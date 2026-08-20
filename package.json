@@ -1,6 +1,6 @@
 {
   "name": "ruletrip",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mutation testing for repository guardrails: prove your feedback controls trip before trusting a green build.",
   "type": "module",
   "bin": {
@@ -35,6 +35,7 @@
   "files": [
     "src",
     "action.yml",
+    "assets/ruletrip-mark.svg",
     "README.md",
     "LICENSE",
     "docs",

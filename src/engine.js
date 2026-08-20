@@ -4,7 +4,27 @@ import { applyCanary } from './mutation.js';
 import { runCommand } from './process.js';
 import { cleanupSandbox, createSandbox } from './sandbox.js';
 
-function commandFacts(execution) {
+function sensorObservation(execution, sensor) {
+  if (!sensor) return null;
+  let observed;
+  if (sensor.stream === 'stdout') observed = execution.stdout;
+  else if (sensor.stream === 'stderr') observed = execution.stderr;
+  else observed = `${execution.stdout}\n${execution.stderr}`;
+
+  const outputTruncated = sensor.stream === 'stdout'
+    ? execution.stdoutTruncated
+    : sensor.stream === 'stderr'
+      ? execution.stderrTruncated
+      : execution.stdoutTruncated || execution.stderrTruncated;
+
+  return {
+    stream: sensor.stream,
+    matched: observed.includes(sensor.includes),
+    outputTruncated
+  };
+}
+
+function commandFacts(execution, sensor = null) {
   return {
     exitCode: execution.code,
     signal: execution.signal,
@@ -12,7 +32,37 @@ function commandFacts(execution) {
     spawnError: execution.spawnError,
     durationMs: execution.durationMs,
     outputCaptured: false,
-    outputTruncated: execution.stdoutTruncated || execution.stderrTruncated
+    outputTruncated: execution.stdoutTruncated || execution.stderrTruncated,
+    sensor: sensorObservation(execution, sensor)
+  };
+}
+
+function sensorFacts(sensor, baselineObservations, attempts, requiredRuns) {
+  if (!sensor) {
+    return {
+      configured: false,
+      stream: null,
+      baselineClear: null,
+      baselineMatchedRuns: 0,
+      mutationMatchedRuns: 0,
+      matched: null
+    };
+  }
+
+  const baselineMatchedRuns = baselineObservations.filter((item) => item.matched).length;
+  const baselineClear = baselineObservations.length === requiredRuns
+    && baselineMatchedRuns === 0
+    && baselineObservations.every((item) => !item.outputTruncated);
+  const mutationMatchedRuns = attempts.filter((attempt) => attempt.sensor?.matched).length;
+  const mutationMatched = attempts.length === requiredRuns && mutationMatchedRuns === requiredRuns;
+
+  return {
+    configured: true,
+    stream: sensor.stream,
+    baselineClear,
+    baselineMatchedRuns,
+    mutationMatchedRuns,
+    matched: baselineClear && mutationMatched
   };
 }
 
@@ -39,25 +89,109 @@ function classifyGuard(canaries) {
   return STATUS.INCONCLUSIVE;
 }
 
-async function runGuard(root, defaults, guard, progress) {
-  progress?.({ phase: 'baseline', guard });
-  let baseline;
-  try {
-    baseline = await executeInSandbox(root, defaults, guard, null);
-  } catch (error) {
+function classifyCanary(attempts, requiredRuns, sensor, observedSensor) {
+  if (attempts.length !== requiredRuns) {
     return {
-      id: guard.id,
-      name: guard.name,
-      command: guard.command,
-      status: STATUS.BROKEN,
-      reason: `baseline infrastructure failed: ${error.message}`,
-      baseline: null,
-      canaries: []
+      status: STATUS.INCONCLUSIVE,
+      reason: `only ${attempts.length}/${requiredRuns} confirmation runs completed`
     };
   }
 
-  const baselineFacts = commandFacts(baseline.execution);
-  if (baseline.execution.timedOut) {
+  if (attempts.some((attempt) => attempt.timedOut || attempt.spawnError || attempt.exitCode === null)) {
+    return {
+      status: STATUS.INCONCLUSIVE,
+      reason: 'at least one confirmation run timed out or could not execute safely'
+    };
+  }
+
+  const rejected = attempts.filter((attempt) => attempt.exitCode !== 0).length;
+  if (rejected === 0) {
+    return {
+      status: STATUS.DEAD,
+      reason: `guard returned zero in all ${requiredRuns} confirmation run${requiredRuns === 1 ? '' : 's'}`
+    };
+  }
+  if (rejected !== requiredRuns) {
+    return {
+      status: STATUS.INCONCLUSIVE,
+      reason: `guard response was unstable: rejected ${rejected}/${requiredRuns} confirmation runs`
+    };
+  }
+
+  if (sensor) {
+    if (!observedSensor.baselineClear) {
+      if (observedSensor.baselineMatchedRuns > 0) {
+        return {
+          status: STATUS.INCONCLUSIVE,
+          reason: `required sensor already appeared in ${observedSensor.baselineMatchedRuns}/${requiredRuns} clean baseline runs`
+        };
+      }
+      return {
+        status: STATUS.INCONCLUSIVE,
+        reason: 'required sensor absence could not be established because clean baseline output was truncated'
+      };
+    }
+    if (observedSensor.mutationMatchedRuns !== requiredRuns) {
+      const truncated = attempts.some((attempt) => attempt.sensor?.outputTruncated);
+      return {
+        status: STATUS.INCONCLUSIVE,
+        reason: truncated
+          ? `guard rejected the violation, but the required sensor was observed in only ${observedSensor.mutationMatchedRuns}/${requiredRuns} runs and output was truncated`
+          : `guard rejected the violation, but the required sensor was observed in only ${observedSensor.mutationMatchedRuns}/${requiredRuns} runs`
+      };
+    }
+    return {
+      status: STATUS.ALIVE,
+      reason: `guard rejected the controlled violation; the sensor was absent from ${requiredRuns}/${requiredRuns} clean controls and present in ${requiredRuns}/${requiredRuns} mutation runs`
+    };
+  }
+
+  return {
+    status: STATUS.ALIVE,
+    reason: requiredRuns === 1
+      ? `guard rejected the controlled violation with exit ${attempts[0].exitCode}`
+      : `guard rejected the controlled violation in ${requiredRuns}/${requiredRuns} confirmation runs`
+  };
+}
+
+function attemptsAreStable(attempts, requiredRuns, sensor) {
+  if (attempts.length !== requiredRuns) return false;
+  if (attempts.some((attempt) => attempt.timedOut || attempt.spawnError || attempt.exitCode === null)) {
+    return false;
+  }
+  return attempts.every((attempt) =>
+    attempt.exitCode === attempts[0].exitCode
+    && (!sensor || attempt.sensor?.matched === attempts[0].sensor?.matched)
+  );
+}
+
+async function runGuard(root, defaults, guard, progress) {
+  const confirmRuns = guard.confirmRuns ?? defaults.confirmRuns ?? 1;
+  progress?.({ phase: 'baseline', guard });
+  const baselineAttempts = [];
+  const baselineExecutions = [];
+  for (let attempt = 0; attempt < confirmRuns; attempt += 1) {
+    try {
+      const baseline = await executeInSandbox(root, defaults, guard, null);
+      baselineExecutions.push(baseline.execution);
+      baselineAttempts.push(commandFacts(baseline.execution));
+    } catch (error) {
+      return {
+        id: guard.id,
+        name: guard.name,
+        command: guard.command,
+        status: STATUS.INCONCLUSIVE,
+        reason: `baseline infrastructure failed: ${error.message}`,
+        baseline: baselineAttempts[0] ?? null,
+        baselineAttempts,
+        confirmRuns,
+        canaries: []
+      };
+    }
+  }
+
+  const baselineFacts = baselineAttempts[0];
+  if (baselineAttempts.some((attempt) => attempt.timedOut)) {
     return {
       id: guard.id,
       name: guard.name,
@@ -65,19 +199,39 @@ async function runGuard(root, defaults, guard, progress) {
       status: STATUS.INCONCLUSIVE,
       reason: 'clean baseline timed out',
       baseline: baselineFacts,
+      baselineAttempts,
+      confirmRuns,
       canaries: []
     };
   }
-  if (baseline.execution.spawnError || baseline.execution.code !== 0) {
+  if (baselineAttempts.some((attempt) => attempt.spawnError || attempt.exitCode === null)) {
     return {
       id: guard.id,
       name: guard.name,
       command: guard.command,
-      status: STATUS.BROKEN,
-      reason: baseline.execution.spawnError
-        ? `clean baseline could not start: ${baseline.execution.spawnError}`
-        : `clean baseline exited ${baseline.execution.code}`,
+      status: STATUS.INCONCLUSIVE,
+      reason: 'at least one clean baseline could not execute safely',
       baseline: baselineFacts,
+      baselineAttempts,
+      confirmRuns,
+      canaries: []
+    };
+  }
+
+  const passingBaselines = baselineAttempts.filter((attempt) => attempt.exitCode === 0).length;
+  if (passingBaselines !== confirmRuns) {
+    const allFailed = passingBaselines === 0;
+    return {
+      id: guard.id,
+      name: guard.name,
+      command: guard.command,
+      status: allFailed ? STATUS.BROKEN : STATUS.INCONCLUSIVE,
+      reason: allFailed
+        ? `clean baseline failed in all ${confirmRuns} confirmation runs`
+        : `clean baseline was unstable: passed ${passingBaselines}/${confirmRuns} confirmation runs`,
+      baseline: baselineFacts,
+      baselineAttempts,
+      confirmRuns,
       canaries: []
     };
   }
@@ -85,32 +239,46 @@ async function runGuard(root, defaults, guard, progress) {
   const canaries = [];
   for (const canary of guard.canaries) {
     progress?.({ phase: 'canary', guard, canary });
+    const attempts = [];
+    const baselineSensorObservations = canary.sensor
+      ? baselineExecutions.map((execution) => sensorObservation(execution, canary.sensor))
+      : [];
+    let target = canary.path;
     try {
-      const run = await executeInSandbox(root, defaults, guard, (worktree) =>
-        applyCanary(worktree, canary)
-      );
-      let status;
-      let reason;
-      if (run.execution.timedOut || run.execution.spawnError || run.execution.code === null) {
-        status = STATUS.INCONCLUSIVE;
-        reason = run.execution.timedOut
-          ? 'guard timed out after mutation'
-          : `guard execution failed: ${run.execution.spawnError || run.execution.signal || 'unknown error'}`;
-      } else if (run.execution.code === 0) {
-        status = STATUS.DEAD;
-        reason = 'guard returned zero after the controlled violation';
-      } else {
-        status = STATUS.ALIVE;
-        reason = `guard rejected the controlled violation with exit ${run.execution.code}`;
+      for (let attempt = 0; attempt < confirmRuns; attempt += 1) {
+        const run = await executeInSandbox(root, defaults, guard, (worktree) =>
+          applyCanary(worktree, canary)
+        );
+        target = run.target;
+        attempts.push(commandFacts(run.execution, canary.sensor));
       }
+      const observedSensor = sensorFacts(
+        canary.sensor,
+        baselineSensorObservations,
+        attempts,
+        confirmRuns
+      );
+      const classification = classifyCanary(
+        attempts,
+        confirmRuns,
+        canary.sensor,
+        observedSensor
+      );
       canaries.push({
         id: canary.id,
         name: canary.name,
         type: canary.type,
-        target: run.target,
-        status,
-        reason,
-        execution: commandFacts(run.execution)
+        target,
+        status: classification.status,
+        reason: classification.reason,
+        execution: attempts[0] ?? null,
+        attempts,
+        confirmation: {
+          requiredRuns: confirmRuns,
+          completedRuns: attempts.length,
+          stable: attemptsAreStable(attempts, confirmRuns, canary.sensor)
+        },
+        sensor: observedSensor
       });
     } catch (error) {
       canaries.push({
@@ -120,7 +288,14 @@ async function runGuard(root, defaults, guard, progress) {
         target: canary.path,
         status: STATUS.INCONCLUSIVE,
         reason: `mutation infrastructure failed: ${error.message}`,
-        execution: null
+        execution: attempts[0] ?? null,
+        attempts,
+        confirmation: {
+          requiredRuns: confirmRuns,
+          completedRuns: attempts.length,
+          stable: false
+        },
+        sensor: sensorFacts(canary.sensor, baselineSensorObservations, attempts, confirmRuns)
       });
     }
   }
@@ -132,12 +307,21 @@ async function runGuard(root, defaults, guard, progress) {
     status: classifyGuard(canaries),
     reason: null,
     baseline: baselineFacts,
+    baselineAttempts,
+    confirmRuns,
     canaries
   };
 }
 
 function summarize(guards) {
   const counts = { alive: 0, dead: 0, broken: 0, inconclusive: 0 };
+  const attribution = {
+    sensorsConfigured: 0,
+    sensorsMatched: 0,
+    sensorsMissing: 0,
+    sensorsUnattributed: 0,
+    exitOnly: 0
+  };
   for (const guard of guards) {
     if (guard.status === STATUS.BROKEN) counts.broken += 1;
     if (guard.status === STATUS.INCONCLUSIVE && guard.canaries.length === 0) {
@@ -145,11 +329,19 @@ function summarize(guards) {
     }
     for (const canary of guard.canaries) {
       if (Object.hasOwn(counts, canary.status)) counts[canary.status] += 1;
+      if (canary.sensor?.configured) {
+        attribution.sensorsConfigured += 1;
+        if (canary.sensor.matched) attribution.sensorsMatched += 1;
+        else if (!canary.sensor.baselineClear) attribution.sensorsUnattributed += 1;
+        else attribution.sensorsMissing += 1;
+      } else {
+        attribution.exitOnly += 1;
+      }
     }
   }
 
   const conclusion = STATUS_ORDER.find((status) => counts[status] > 0) ?? STATUS.ALIVE;
-  return { conclusion, counts };
+  return { conclusion, counts, attribution };
 }
 
 export async function runRuleTrip({ root, config, configPath, progress }) {
@@ -166,7 +358,7 @@ export async function runRuleTrip({ root, config, configPath, progress }) {
     generatedAt: new Date().toISOString(),
     source: { commit, configPath },
     semantics: {
-      alive: 'the configured command rejected the planted violation',
+      alive: 'the configured command rejected the planted violation consistently; configured sensors were absent on clean controls and present on mutations',
       dead: 'the configured command returned zero after the planted violation',
       broken: 'the configured command failed on the clean baseline',
       inconclusive: 'RuleTrip could not classify the experiment safely'

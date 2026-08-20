@@ -90,6 +90,9 @@ function printResult(report) {
   process.stdout.write(
     `\nRuleTrip: ${report.conclusion.toUpperCase()} | alive ${counts.alive} | dead ${counts.dead} | broken ${counts.broken} | inconclusive ${counts.inconclusive}\n`
   );
+  process.stdout.write(
+    `Attribution: sensors ${report.attribution.sensorsMatched}/${report.attribution.sensorsConfigured} attributed | missing ${report.attribution.sensorsMissing} | baseline-unattributed ${report.attribution.sensorsUnattributed} | exit-only ${report.attribution.exitOnly}\n`
+  );
   for (const guard of report.guards) {
     process.stdout.write(`- ${guard.status.toUpperCase()} ${guard.name}${guard.reason ? ` — ${guard.reason}` : ''}\n`);
     for (const canary of guard.canaries) {

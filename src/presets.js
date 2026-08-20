@@ -3,7 +3,8 @@ const TEST_CANARY = (testDirectory) => ({
   name: 'A deliberately failing test is discovered',
   type: 'create',
   path: `${testDirectory}/ruletrip-canary.test.js`,
-  content: "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n"
+  content: "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n",
+  sensor: { stream: 'combined', includes: 'RULETRIP_CANARY: deliberate failure' }
 });
 
 const PACKS = Object.freeze([
@@ -24,7 +25,8 @@ const PACKS = Object.freeze([
       name: 'A deliberate TypeScript type error is rejected',
       type: 'create',
       path: 'ruletrip-canary.ts',
-      content: "const ruletripCanary: string = 42;\nexport { ruletripCanary };\n"
+      content: "const ruletripCanary: string = 42;\nexport { ruletripCanary };\n",
+      sensor: { stream: 'combined', includes: 'ruletrip-canary.ts' }
     })
   }),
   Object.freeze({
@@ -37,7 +39,8 @@ const PACKS = Object.freeze([
       name: 'A deliberate JavaScript syntax error is rejected',
       type: 'create',
       path: 'ruletrip-canary-lint.js',
-      content: 'const = RULETRIP_CANARY;\n'
+      content: 'const = RULETRIP_CANARY;\n',
+      sensor: { stream: 'combined', includes: 'ruletrip-canary-lint.js' }
     })
   }),
   Object.freeze({
@@ -50,7 +53,8 @@ const PACKS = Object.freeze([
       name: 'An intentionally unpinned workflow action is rejected',
       type: 'create',
       path: '.github/workflows/ruletrip-unpinned-canary.yml',
-      content: "name: RuleTrip inert workflow-pin canary\non: workflow_dispatch\npermissions: {}\njobs:\n  canary:\n    if: ${{ false }}\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@main\n"
+      content: "name: RuleTrip inert workflow-pin canary\non: workflow_dispatch\npermissions: {}\njobs:\n  canary:\n    if: ${{ false }}\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@main\n",
+      sensor: { stream: 'combined', includes: 'ruletrip-unpinned-canary.yml' }
     })
   }),
   Object.freeze({

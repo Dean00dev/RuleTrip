@@ -31,6 +31,16 @@ outputs:
     description: Number of guards whose clean baseline failed.
   inconclusive:
     description: Number of canaries or guards that could not be classified safely.
+  sensors_configured:
+    description: Number of canaries with literal output sensors.
+  sensors_matched:
+    description: Number of configured sensors absent on every clean control and matched in every mutation run.
+  sensors_missing:
+    description: Number of configured sensors absent on clean controls but missing from one or more mutation runs.
+  sensors_unattributed:
+    description: Number of configured sensors whose absence could not be established on clean controls.
+  exit_only:
+    description: Number of canaries classified from process exits without a sensor.
   json_report:
     description: Path to the JSON report.
   sarif_report:

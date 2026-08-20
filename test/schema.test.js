@@ -14,4 +14,10 @@ test('published JSON schemas are valid JSON and pinned to schema version 1', asy
   assert.equal(report.properties.schemaVersion.const, 1);
   assert.equal(config.properties.version.const, 1);
   assert.deepEqual(report.properties.conclusion.enum, ['alive', 'dead', 'broken', 'inconclusive']);
+  assert.equal(config.properties.defaults.properties.confirmRuns.maximum, 5);
+  const canary = config.properties.guards.items.properties.canaries.items;
+  assert.deepEqual(canary.properties.sensor.properties.stream.enum, ['stdout', 'stderr', 'combined']);
+  assert.ok(report.properties.attribution.required.includes('sensorsUnattributed'));
+  const reportCanary = report.properties.guards.items.properties.canaries.items;
+  assert.ok(reportCanary.properties.sensor.required.includes('baselineClear'));
 });

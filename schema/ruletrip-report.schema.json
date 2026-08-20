@@ -37,6 +37,18 @@
       },
       "additionalProperties": false
     },
+    "attribution": {
+      "type": "object",
+      "required": ["sensorsConfigured", "sensorsMatched", "sensorsMissing", "sensorsUnattributed", "exitOnly"],
+      "properties": {
+        "sensorsConfigured": { "type": "integer", "minimum": 0 },
+        "sensorsMatched": { "type": "integer", "minimum": 0 },
+        "sensorsMissing": { "type": "integer", "minimum": 0 },
+        "sensorsUnattributed": { "type": "integer", "minimum": 0 },
+        "exitOnly": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "guards": {
       "type": "array",
       "items": {
@@ -49,6 +61,8 @@
           "status": { "enum": ["alive", "dead", "broken", "inconclusive"] },
           "reason": { "type": ["string", "null"] },
           "baseline": { "type": ["object", "null"] },
+          "baselineAttempts": { "type": "array", "items": { "type": "object" } },
+          "confirmRuns": { "type": "integer", "minimum": 1, "maximum": 5 },
           "canaries": {
             "type": "array",
             "items": {
@@ -61,7 +75,31 @@
                 "target": { "type": "string", "minLength": 1 },
                 "status": { "enum": ["alive", "dead", "broken", "inconclusive"] },
                 "reason": { "type": "string" },
-                "execution": { "type": ["object", "null"] }
+                "execution": { "type": ["object", "null"] },
+                "attempts": { "type": "array", "items": { "type": "object" } },
+                "confirmation": {
+                  "type": "object",
+                  "required": ["requiredRuns", "completedRuns", "stable"],
+                  "properties": {
+                    "requiredRuns": { "type": "integer", "minimum": 1, "maximum": 5 },
+                    "completedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "stable": { "type": "boolean" }
+                  },
+                  "additionalProperties": false
+                },
+                "sensor": {
+                  "type": "object",
+                  "required": ["configured", "stream", "baselineClear", "baselineMatchedRuns", "mutationMatchedRuns", "matched"],
+                  "properties": {
+                    "configured": { "type": "boolean" },
+                    "stream": { "enum": ["stdout", "stderr", "combined", null] },
+                    "baselineClear": { "type": ["boolean", "null"] },
+                    "baselineMatchedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "mutationMatchedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "matched": { "type": ["boolean", "null"] }
+                  },
+                  "additionalProperties": false
+                }
               },
               "additionalProperties": true
             }

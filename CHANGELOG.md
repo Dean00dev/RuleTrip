@@ -4,6 +4,25 @@ All notable changes to RuleTrip are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-20
+
+### Added
+
+- differential stdout, stderr, or combined-output sensors that require a literal signal to be absent on clean controls and present on mutations without persisting raw command output;
+- bounded `confirmRuns` support (one to five) for clean baselines and canary experiments in fresh worktrees;
+- explicit confirmation and sensor evidence in Markdown, JSON, and SARIF, while JUnit retains the conservative outcome projection;
+- hostile tests for unrelated non-zero failures, pre-existing and truncated baseline signals, matched sensors, and unstable repeated outcomes;
+- Action-as-an-Action CI verification on Ubuntu, macOS, and Windows.
+
+### Changed
+
+- generated starter configurations now request two confirmation runs and attach sensors to packs with stable literal signals;
+- a mixed repeated response is `INCONCLUSIVE`, never promoted to `ALIVE` or `DEAD`;
+- a non-zero result with a missing, pre-existing, or baseline-obscured sensor is `INCONCLUSIVE`, not `ALIVE`;
+- baseline infrastructure failures are classified as `INCONCLUSIVE` rather than mislabelled as a broken guard;
+- repository paths and report-facing names reject control characters, and workflow-command errors are escaped before reaching GitHub logs;
+- package and runtime version advanced to `0.3.0`.
+
 ## [0.2.0] - 2026-08-17
 
 ### Added
@@ -37,6 +56,7 @@ All notable changes to RuleTrip are documented here.
 - hostile tests for false greens, broken controls, timeouts, and source preservation;
 - Node 24-native, SHA-pinned CI actions across Linux, macOS, and Windows.
 
-[Unreleased]: https://github.com/Dean00dev/RuleTrip/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Dean00dev/RuleTrip/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Dean00dev/RuleTrip/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Dean00dev/RuleTrip/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Dean00dev/RuleTrip/releases/tag/v0.1.0

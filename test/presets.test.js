@@ -13,6 +13,8 @@ test('discovers supported package scripts without inventing absent guards', () =
   assert.deepEqual(found.guards.map((guard) => guard.id), ['tests', 'typecheck', 'lint']);
   assert.equal(found.guards[0].command, 'npm test');
   assert.equal(found.guards[0].canaries[0].path, 'tests/ruletrip-canary.test.js');
+  assert.match(found.guards[0].canaries[0].sensor.includes, /RULETRIP_CANARY/u);
+  assert.equal(found.guards[1].canaries[0].sensor.stream, 'combined');
   assert.equal(found.discoveries[1].commandSource, 'package.json scripts.typecheck');
 });
 

@@ -42,6 +42,7 @@ export async function buildStarterConfig(root) {
     defaults: {
       timeoutMs: 120000,
       maxOutputBytes: 65536,
+      confirmRuns: 2,
       linkPaths: ['node_modules']
     },
     guards

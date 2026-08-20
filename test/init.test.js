@@ -28,6 +28,7 @@ test('starter discovery is side-effect free and discovers multiple npm guards', 
   assert.equal(starter.discovery.commandSource, 'package.json scripts.test');
   assert.equal(starter.discovery.testDirectory, 'tests');
   assert.deepEqual(starter.config.guards.map((guard) => guard.id), ['tests', 'typecheck', 'lint']);
+  assert.equal(starter.config.defaults.confirmRuns, 2);
   await assert.rejects(fs.access(path.join(root, '.ruletrip.json')));
 });
 
