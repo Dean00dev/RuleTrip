@@ -1,6 +1,6 @@
 # RuleTrip v0.3.0 verification receipt
 
-This receipt separates locally executed evidence from hosted checks that remain pending until the candidate commit reaches GitHub Actions.
+This receipt separates locally executed evidence from the hosted checks observed for the published candidate commit.
 
 ## Candidate
 
@@ -39,14 +39,14 @@ The separately reviewed social preview is a `1280×640` RGBA PNG, 138,770 bytes,
 
 The npm archive checksum is intentionally not embedded here: this receipt is itself packaged, so embedding the archive's digest would change the archive. Generate and record that checksum only after the tagged source is frozen.
 
-## Hosted verification pending
+## Hosted verification — 2026-08-20
 
-The GitHub Actions candidate expands to nine jobs:
+GitHub Actions [run #17](https://github.com/Dean00dev/RuleTrip/actions/runs/32353985941) completed successfully on its first attempt for implementation commit `18d5d116ee5060cb727c4be0f7a0df649d0a975f`. The workflow expanded to nine jobs:
 
-- Node.js 20 and 24 tests on Ubuntu, macOS, and Windows (six jobs);
-- RuleTrip executed through `uses: ./` on Ubuntu, macOS, and Windows (three jobs).
+- Node.js 20 and 24 syntax checks plus all 36 tests on Ubuntu, macOS, and Windows (six successful jobs);
+- RuleTrip executed through `uses: ./` on Ubuntu, macOS, and Windows (three successful jobs).
 
-These remain unverified until the hosted run is observed green. A green local run does not substitute for that evidence.
+All nine jobs completed successfully. The hosted run therefore demonstrates both the test suite and the Action entrypoint on each supported runner family; it does not establish the unrelated boundaries listed below.
 
 ## Boundaries that remain open
 
