@@ -43,7 +43,13 @@ function evidenceSummary(canary) {
     else if (!canary.sensor.baselineClear) sensor = 'sensor baseline unclear';
     else sensor = 'sensor missing';
   }
-  return `${completed}/${required}; ${sensor}`;
+  let control = 'no matched control';
+  if (canary.control?.configured) {
+    if (canary.control.status === 'passed') control = 'control passed';
+    else if (canary.control.status === 'rejected') control = 'control rejected';
+    else control = `control ${canary.control.status}`;
+  }
+  return `${completed}/${required}; ${sensor}; ${control}`;
 }
 
 export function buildMarkdown(report) {
@@ -68,7 +74,11 @@ export function buildMarkdown(report) {
     `Sensors matched: **${report.attribution?.sensorsMatched ?? 0}/${report.attribution?.sensorsConfigured ?? 0}**  `,
     `Sensors missing: **${report.attribution?.sensorsMissing ?? 0}**  `,
     `Sensors unattributed at baseline: **${report.attribution?.sensorsUnattributed ?? 0}**  `,
-    `Exit-only canaries: **${report.attribution?.exitOnly ?? 0}**`,
+    `Exit-only canaries: **${report.attribution?.exitOnly ?? 0}**  `,
+    `Matched controls passed: **${report.attribution?.controlsPassed ?? 0}/${report.attribution?.controlsConfigured ?? 0}**  `,
+    `Matched controls rejected: **${report.attribution?.controlsRejected ?? 0}**  `,
+    `Matched controls inconclusive: **${report.attribution?.controlsInconclusive ?? 0}**  `,
+    `Matched controls not run: **${report.attribution?.controlsNotRun ?? 0}**`,
     '',
     '## Experiments',
     ''
@@ -93,7 +103,7 @@ export function buildMarkdown(report) {
   lines.push(
     '## What this proves',
     '',
-    'An **ALIVE** result proves only that the configured command returned a non-zero exit code for that exact planted violation in this commit. When a sensor is configured, it also proves that the declared literal signal was absent from every bounded clean-control capture and appeared in every bounded mutation capture. It does not prove overall correctness, security, test quality, or coverage.',
+    'An **ALIVE** result proves only that the configured command returned a non-zero exit code for that exact planted violation in this commit. When a sensor is configured, it also proves that the declared literal signal was absent from every bounded clean-control capture and appeared in every bounded mutation capture. When a matched control is configured, ALIVE additionally requires a near-identical neutral mutation to pass consistently. This tests specificity; it does not establish semantic equivalence between the control and the violation or prove overall correctness, security, test quality, or coverage.',
     '',
     'Command output is intentionally excluded from persisted reports to reduce accidental secret leakage.',
     ''
@@ -139,7 +149,10 @@ export function buildSarif(report) {
           sensorBaselineClear: canary.sensor?.baselineClear ?? null,
           sensorBaselineMatchedRuns: canary.sensor?.baselineMatchedRuns ?? 0,
           sensorMutationMatchedRuns: canary.sensor?.mutationMatchedRuns ?? 0,
-          sensorMatched: canary.sensor?.matched ?? null
+          sensorMatched: canary.sensor?.matched ?? null,
+          controlConfigured: canary.control?.configured ?? false,
+          controlStatus: canary.control?.status ?? 'not-configured',
+          controlPassedRuns: canary.control?.passedRuns ?? 0
         }
       });
     }
