@@ -52,6 +52,20 @@
                     "includes": { "type": "string", "minLength": 1, "maxLength": 4096 }
                   },
                   "additionalProperties": false
+                },
+                "control": {
+                  "type": "object",
+                  "required": ["type", "path"],
+                  "properties": {
+                    "type": { "enum": ["create", "append", "replace", "delete"] },
+                    "path": { "type": "string", "minLength": 1 },
+                    "content": { "type": "string" },
+                    "overwrite": { "type": "boolean" },
+                    "search": { "type": "string" },
+                    "replacement": { "type": "string" },
+                    "replaceAll": { "type": "boolean" }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
