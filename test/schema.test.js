@@ -20,4 +20,7 @@ test('published JSON schemas are valid JSON and pinned to schema version 1', asy
   assert.ok(report.properties.attribution.required.includes('sensorsUnattributed'));
   const reportCanary = report.properties.guards.items.properties.canaries.items;
   assert.ok(reportCanary.properties.sensor.required.includes('baselineClear'));
+  assert.equal(canary.properties.control.additionalProperties, false);
+  assert.ok(report.properties.attribution.required.includes('controlsPassed'));
+  assert.ok(reportCanary.properties.control.required.includes('sensorClear'));
 });
