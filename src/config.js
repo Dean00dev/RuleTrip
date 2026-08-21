@@ -93,6 +93,55 @@ function validateCanary(raw, guardId, index) {
 
   canary.sensor = validateSensor(raw.sensor, guardId, canary.id);
 
+  if (raw.control !== undefined) {
+    if (!raw.control || typeof raw.control !== 'object' || Array.isArray(raw.control)) {
+      throw new Error(`guard ${guardId} canary ${canary.id} control must be an object`);
+    }
+    const controlRaw = raw.control;
+    const control = {
+      type: controlRaw.type,
+      path: normalizeRelativePath(
+        controlRaw.path,
+        `guard ${guardId} canary ${canary.id} control path`
+      )
+    };
+    if (!CANARY_TYPES.has(control.type)) {
+      throw new Error(
+        `guard ${guardId} canary ${canary.id} control has unsupported type: ${control.type}`
+      );
+    }
+    if (control.type !== canary.type || control.path !== canary.path) {
+      throw new Error(
+        `guard ${guardId} canary ${canary.id} control must use the same type and path as its violation`
+      );
+    }
+    if (control.type === 'create' || control.type === 'append') {
+      if (typeof controlRaw.content !== 'string') {
+        throw new Error(`guard ${guardId} canary ${canary.id} control requires string content`);
+      }
+      control.content = controlRaw.content;
+    }
+    if (control.type === 'create') control.overwrite = controlRaw.overwrite === true;
+    if (control.type === 'replace') {
+      if (typeof controlRaw.search !== 'string' || controlRaw.search === '') {
+        throw new Error(
+          `guard ${guardId} canary ${canary.id} control requires a non-empty search string`
+        );
+      }
+      if (typeof controlRaw.replacement !== 'string') {
+        throw new Error(
+          `guard ${guardId} canary ${canary.id} control requires a replacement string`
+        );
+      }
+      control.search = controlRaw.search;
+      control.replacement = controlRaw.replacement;
+      control.replaceAll = controlRaw.replaceAll === true;
+    }
+    canary.control = control;
+  } else {
+    canary.control = null;
+  }
+
   return canary;
 }
 
