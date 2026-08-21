@@ -49,6 +49,8 @@ An exit-only **ALIVE** result states only that one command returned non-zero aft
 
 v0.3 sensors can require a declared literal to be absent on every clean control and present in every mutation confirmation. This differential check reduces—but does not eliminate—unrelated-failure attribution: another mutation-only failure could emit the same literal, and the guard itself controls its output. Use specific inert markers and minimal canaries. RuleTrip deliberately records sensor match facts rather than raw command output. Truncated clean output is inconclusive because absence cannot be established.
 
+v0.4 matched controls reduce another attribution error: a guard that rejects every canary filename, marker, or new file can no longer be labelled `ALIVE` when a paired neutral mutation is configured and also rejected. This remains a bounded experiment. RuleTrip verifies that the control uses the same mutation type and path; it cannot prove that the user's neutral content differs from the violating content in exactly one semantically meaningful way. A dishonest or poorly designed control can still mislead.
+
 Repeated confirmation exposes some flaky responses but is not statistical reliability evidence. Two matching runs are two observations, not proof of future behaviour.
 
 ## Reporting a vulnerability
