@@ -4,6 +4,21 @@ All notable changes to RuleTrip are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-21
+
+### Added
+
+- opt-in matched counterfactual controls that preserve a canary's mutation surface while removing its intended defect;
+- fail-closed specificity classification: a canary is not `ALIVE` when its neutral control is also rejected, emits the violation sensor, times out, truncates sensor evidence, or behaves inconsistently;
+- counterfactual facts in Markdown, JSON, SARIF, and GitHub Action outputs without persisting raw command output;
+- matched controls for the built-in test, type-check, lint, and workflow-pin canary packs;
+- hostile tests for path-only rejection, sensor leakage into passing controls, escaped violations, and properly defect-specific guards.
+
+### Changed
+
+- generated starter canaries now distinguish an observed guard response from a response specific to the declared violation;
+- package and runtime version advanced to `0.4.0`.
+
 ## [0.3.0] - 2026-08-20
 
 ### Added
@@ -56,7 +71,8 @@ All notable changes to RuleTrip are documented here.
 - hostile tests for false greens, broken controls, timeouts, and source preservation;
 - Node 24-native, SHA-pinned CI actions across Linux, macOS, and Windows.
 
-[Unreleased]: https://github.com/Dean00dev/RuleTrip/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Dean00dev/RuleTrip/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Dean00dev/RuleTrip/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Dean00dev/RuleTrip/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Dean00dev/RuleTrip/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Dean00dev/RuleTrip/releases/tag/v0.1.0
