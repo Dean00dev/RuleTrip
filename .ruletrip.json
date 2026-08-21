@@ -23,6 +23,11 @@
           "sensor": {
             "stream": "combined",
             "includes": "RULETRIP_CANARY: deliberate failure"
+          },
+          "control": {
+            "type": "create",
+            "path": "test/ruletrip-canary.test.js",
+            "content": "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip neutral control', () => {\n  assert.equal('RULETRIP_CANARY: deliberate failure'.startsWith('RULETRIP_CANARY'), true);\n});\n"
           }
         }
       ]
@@ -41,6 +46,11 @@
           "sensor": {
             "stream": "combined",
             "includes": "RULETRIP_SENSOR_SYNTAX"
+          },
+          "control": {
+            "type": "append",
+            "path": "src/constants.js",
+            "content": "\n// RULETRIP_SENSOR_SYNTAX neutral control\n"
           }
         }
       ]
