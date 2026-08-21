@@ -49,7 +49,12 @@ test('requires the declared sensor before a non-zero exit can be ALIVE', async (
     sensorsMatched: 0,
     sensorsMissing: 1,
     sensorsUnattributed: 0,
-    exitOnly: 0
+    exitOnly: 0,
+    controlsConfigured: 0,
+    controlsPassed: 0,
+    controlsRejected: 0,
+    controlsInconclusive: 0,
+    controlsNotRun: 0
   });
   assert.match(canary.reason, /required sensor was observed in only 0\/2 runs/u);
   assert.doesNotMatch(JSON.stringify(report), /UNRELATED_FAILURE/u);
