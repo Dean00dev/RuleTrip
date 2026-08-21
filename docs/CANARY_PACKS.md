@@ -20,7 +20,9 @@ Pack discovery is deliberately narrow. RuleTrip does not guess arbitrary script 
 
 A preset can still be **DEAD** because the repository command excludes the canary path, because the scanner policy does not cover that defect, or because the command is not the guard the user thought it was. That is the experiment RuleTrip is meant to expose.
 
-In v0.3, the test, type-check, lint, and workflow-pin starter canaries include literal sensors based on their unique marker or path. The generic policy pack remains exit-only because RuleTrip cannot know how a repository-specific policy command describes the marker. Add a precise sensor after observing and reviewing that command's stable output.
+The test, type-check, lint, and workflow-pin starter canaries include literal sensors based on their unique marker or path. In v0.4 they also include matched controls that keep the same mutation operation and path while removing the intended defect. The generic policy pack remains exit-only and control-free because RuleTrip cannot know how a repository-specific policy command describes or neutralises the marker.
+
+If a scanner rejects both a built-in violation and its matched control, RuleTrip reports **INCONCLUSIVE**. That is useful evidence that the response may be tied to the canary surface rather than the defect the pack claims to exercise.
 
 ## Adding a repository-specific canary
 
