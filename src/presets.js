@@ -4,7 +4,12 @@ const TEST_CANARY = (testDirectory) => ({
   type: 'create',
   path: `${testDirectory}/ruletrip-canary.test.js`,
   content: "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip planted failure', () => {\n  assert.fail('RULETRIP_CANARY: deliberate failure');\n});\n",
-  sensor: { stream: 'combined', includes: 'RULETRIP_CANARY: deliberate failure' }
+  sensor: { stream: 'combined', includes: 'RULETRIP_CANARY: deliberate failure' },
+  control: {
+    type: 'create',
+    path: `${testDirectory}/ruletrip-canary.test.js`,
+    content: "import test from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('RuleTrip neutral control', () => {\n  assert.equal('RULETRIP_CANARY: deliberate failure'.startsWith('RULETRIP_CANARY'), true);\n});\n"
+  }
 });
 
 const PACKS = Object.freeze([
@@ -26,7 +31,12 @@ const PACKS = Object.freeze([
       type: 'create',
       path: 'ruletrip-canary.ts',
       content: "const ruletripCanary: string = 42;\nexport { ruletripCanary };\n",
-      sensor: { stream: 'combined', includes: 'ruletrip-canary.ts' }
+      sensor: { stream: 'combined', includes: 'ruletrip-canary.ts' },
+      control: {
+        type: 'create',
+        path: 'ruletrip-canary.ts',
+        content: "const ruletripCanary: string = 'RULETRIP_CANARY';\nexport { ruletripCanary };\n"
+      }
     })
   }),
   Object.freeze({
@@ -40,7 +50,12 @@ const PACKS = Object.freeze([
       type: 'create',
       path: 'ruletrip-canary-lint.js',
       content: 'const = RULETRIP_CANARY;\n',
-      sensor: { stream: 'combined', includes: 'ruletrip-canary-lint.js' }
+      sensor: { stream: 'combined', includes: 'ruletrip-canary-lint.js' },
+      control: {
+        type: 'create',
+        path: 'ruletrip-canary-lint.js',
+        content: 'const RULETRIP_CANARY = true;\nexport { RULETRIP_CANARY };\n'
+      }
     })
   }),
   Object.freeze({
@@ -54,7 +69,12 @@ const PACKS = Object.freeze([
       type: 'create',
       path: '.github/workflows/ruletrip-unpinned-canary.yml',
       content: "name: RuleTrip inert workflow-pin canary\non: workflow_dispatch\npermissions: {}\njobs:\n  canary:\n    if: ${{ false }}\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@main\n",
-      sensor: { stream: 'combined', includes: 'ruletrip-unpinned-canary.yml' }
+      sensor: { stream: 'combined', includes: 'ruletrip-unpinned-canary.yml' },
+      control: {
+        type: 'create',
+        path: '.github/workflows/ruletrip-unpinned-canary.yml',
+        content: "name: RuleTrip inert workflow-pin control\non: workflow_dispatch\npermissions: {}\njobs:\n  canary:\n    if: ${{ false }}\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+      }
     })
   }),
   Object.freeze({

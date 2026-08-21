@@ -39,13 +39,18 @@
     },
     "attribution": {
       "type": "object",
-      "required": ["sensorsConfigured", "sensorsMatched", "sensorsMissing", "sensorsUnattributed", "exitOnly"],
+      "required": ["sensorsConfigured", "sensorsMatched", "sensorsMissing", "sensorsUnattributed", "exitOnly", "controlsConfigured", "controlsPassed", "controlsRejected", "controlsInconclusive", "controlsNotRun"],
       "properties": {
         "sensorsConfigured": { "type": "integer", "minimum": 0 },
         "sensorsMatched": { "type": "integer", "minimum": 0 },
         "sensorsMissing": { "type": "integer", "minimum": 0 },
         "sensorsUnattributed": { "type": "integer", "minimum": 0 },
-        "exitOnly": { "type": "integer", "minimum": 0 }
+        "exitOnly": { "type": "integer", "minimum": 0 },
+        "controlsConfigured": { "type": "integer", "minimum": 0 },
+        "controlsPassed": { "type": "integer", "minimum": 0 },
+        "controlsRejected": { "type": "integer", "minimum": 0 },
+        "controlsInconclusive": { "type": "integer", "minimum": 0 },
+        "controlsNotRun": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
@@ -97,6 +102,24 @@
                     "baselineMatchedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
                     "mutationMatchedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
                     "matched": { "type": ["boolean", "null"] }
+                  },
+                  "additionalProperties": false
+                },
+                "control": {
+                  "type": "object",
+                  "required": ["configured", "status", "target", "requiredRuns", "completedRuns", "passedRuns", "stable", "sensorClear", "sensorMatchedRuns", "attempts"],
+                  "properties": {
+                    "configured": { "type": "boolean" },
+                    "status": { "enum": ["not-configured", "not-run", "passed", "rejected", "inconclusive"] },
+                    "target": { "type": ["string", "null"] },
+                    "requiredRuns": { "type": "integer", "minimum": 1, "maximum": 5 },
+                    "completedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "passedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "stable": { "type": "boolean" },
+                    "sensorClear": { "type": ["boolean", "null"] },
+                    "sensorMatchedRuns": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "attempts": { "type": "array", "items": { "type": "object" } },
+                    "reason": { "type": "string" }
                   },
                   "additionalProperties": false
                 }

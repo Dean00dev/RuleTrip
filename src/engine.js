@@ -165,6 +165,67 @@ function attemptsAreStable(attempts, requiredRuns, sensor) {
   );
 }
 
+function unrunControl(control, requiredRuns) {
+  return {
+    configured: Boolean(control),
+    status: control ? 'not-run' : 'not-configured',
+    target: control?.path ?? null,
+    requiredRuns,
+    completedRuns: 0,
+    passedRuns: 0,
+    stable: false,
+    sensorClear: null,
+    sensorMatchedRuns: 0,
+    attempts: []
+  };
+}
+
+function classifyControl(attempts, requiredRuns, sensor) {
+  const facts = {
+    configured: true,
+    status: 'inconclusive',
+    requiredRuns,
+    completedRuns: attempts.length,
+    passedRuns: attempts.filter((attempt) => attempt.exitCode === 0).length,
+    stable: attemptsAreStable(attempts, requiredRuns, sensor),
+    sensorClear: sensor
+      ? attempts.length === requiredRuns
+        && attempts.every((attempt) => !attempt.sensor?.matched && !attempt.sensor?.outputTruncated)
+      : null,
+    sensorMatchedRuns: sensor
+      ? attempts.filter((attempt) => attempt.sensor?.matched).length
+      : 0,
+    attempts
+  };
+
+  if (attempts.length !== requiredRuns) {
+    return { ...facts, reason: `matched control completed only ${attempts.length}/${requiredRuns} runs` };
+  }
+  if (attempts.some((attempt) => attempt.timedOut || attempt.spawnError || attempt.exitCode === null)) {
+    return { ...facts, reason: 'matched control timed out or could not execute safely' };
+  }
+  if (facts.passedRuns !== requiredRuns) {
+    return {
+      ...facts,
+      status: 'rejected',
+      reason: `guard also rejected the matched control in ${requiredRuns - facts.passedRuns}/${requiredRuns} runs`
+    };
+  }
+  if (sensor && !facts.sensorClear) {
+    return {
+      ...facts,
+      reason: facts.sensorMatchedRuns > 0
+        ? `the violation sensor also appeared in ${facts.sensorMatchedRuns}/${requiredRuns} passing control runs`
+        : 'sensor absence could not be established because matched-control output was truncated'
+    };
+  }
+  return {
+    ...facts,
+    status: 'passed',
+    reason: `matched control passed in ${requiredRuns}/${requiredRuns} runs`
+  };
+}
+
 async function runGuard(root, defaults, guard, progress) {
   const confirmRuns = guard.confirmRuns ?? defaults.confirmRuns ?? 1;
   progress?.({ phase: 'baseline', guard });
@@ -258,12 +319,49 @@ async function runGuard(root, defaults, guard, progress) {
         attempts,
         confirmRuns
       );
-      const classification = classifyCanary(
+      let classification = classifyCanary(
         attempts,
         confirmRuns,
         canary.sensor,
         observedSensor
       );
+      let control = unrunControl(canary.control, confirmRuns);
+      if (canary.control && classification.status === STATUS.ALIVE) {
+        progress?.({ phase: 'control', guard, canary });
+        const controlAttempts = [];
+        let controlTarget = canary.control.path;
+        try {
+          for (let attempt = 0; attempt < confirmRuns; attempt += 1) {
+            const run = await executeInSandbox(root, defaults, guard, (worktree) =>
+              applyCanary(worktree, canary.control)
+            );
+            controlTarget = run.target;
+            controlAttempts.push(commandFacts(run.execution, canary.sensor));
+          }
+          control = {
+            ...classifyControl(controlAttempts, confirmRuns, canary.sensor),
+            target: controlTarget
+          };
+        } catch (error) {
+          control = {
+            ...classifyControl(controlAttempts, confirmRuns, canary.sensor),
+            target: controlTarget,
+            status: 'inconclusive',
+            reason: `matched-control infrastructure failed: ${error.message}`
+          };
+        }
+        if (control.status === 'passed') {
+          classification = {
+            status: STATUS.ALIVE,
+            reason: `${classification.reason}; matched control passed ${confirmRuns}/${confirmRuns}`
+          };
+        } else {
+          classification = {
+            status: STATUS.INCONCLUSIVE,
+            reason: `${classification.reason}; ${control.reason}`
+          };
+        }
+      }
       canaries.push({
         id: canary.id,
         name: canary.name,
@@ -278,7 +376,8 @@ async function runGuard(root, defaults, guard, progress) {
           completedRuns: attempts.length,
           stable: attemptsAreStable(attempts, confirmRuns, canary.sensor)
         },
-        sensor: observedSensor
+        sensor: observedSensor,
+        control
       });
     } catch (error) {
       canaries.push({
@@ -295,7 +394,8 @@ async function runGuard(root, defaults, guard, progress) {
           completedRuns: attempts.length,
           stable: false
         },
-        sensor: sensorFacts(canary.sensor, baselineSensorObservations, attempts, confirmRuns)
+        sensor: sensorFacts(canary.sensor, baselineSensorObservations, attempts, confirmRuns),
+        control: unrunControl(canary.control, confirmRuns)
       });
     }
   }
@@ -320,7 +420,12 @@ function summarize(guards) {
     sensorsMatched: 0,
     sensorsMissing: 0,
     sensorsUnattributed: 0,
-    exitOnly: 0
+    exitOnly: 0,
+    controlsConfigured: 0,
+    controlsPassed: 0,
+    controlsRejected: 0,
+    controlsInconclusive: 0,
+    controlsNotRun: 0
   };
   for (const guard of guards) {
     if (guard.status === STATUS.BROKEN) counts.broken += 1;
@@ -336,6 +441,13 @@ function summarize(guards) {
         else attribution.sensorsMissing += 1;
       } else {
         attribution.exitOnly += 1;
+      }
+      if (canary.control?.configured) {
+        attribution.controlsConfigured += 1;
+        if (canary.control.status === 'passed') attribution.controlsPassed += 1;
+        else if (canary.control.status === 'rejected') attribution.controlsRejected += 1;
+        else if (canary.control.status === 'not-run') attribution.controlsNotRun += 1;
+        else attribution.controlsInconclusive += 1;
       }
     }
   }
@@ -358,7 +470,7 @@ export async function runRuleTrip({ root, config, configPath, progress }) {
     generatedAt: new Date().toISOString(),
     source: { commit, configPath },
     semantics: {
-      alive: 'the configured command rejected the planted violation consistently; configured sensors were absent on clean controls and present on mutations',
+      alive: 'the configured command rejected the planted violation consistently; configured sensors were absent on clean controls and present on mutations; configured matched controls passed',
       dead: 'the configured command returned zero after the planted violation',
       broken: 'the configured command failed on the clean baseline',
       inconclusive: 'RuleTrip could not classify the experiment safely'

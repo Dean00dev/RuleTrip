@@ -35,7 +35,7 @@ If no supported command is found, RuleTrip writes no invented command during pre
 | `version` | yes | Configuration schema; currently `1`. |
 | `defaults.timeoutMs` | no | Per-command timeout, 1 ms to 30 minutes. |
 | `defaults.maxOutputBytes` | no | In-memory capture cap per stdout/stderr stream. Output is not persisted. |
-| `defaults.confirmRuns` | no | Fresh baseline and canary repetitions, from 1 to 5. Default is 1 for backward compatibility; generated v0.3 configurations use 2. |
+| `defaults.confirmRuns` | no | Fresh baseline, canary, and matched-control repetitions, from 1 to 5. Default is 1 for backward compatibility; generated configurations use 2. |
 | `defaults.linkPaths` | no | Repository-relative directories symlinked/junctioned into worktrees when present. |
 | `guards` | yes | One or more commands with one or more canaries. |
 
@@ -137,6 +137,34 @@ A non-zero exit establishes that the process rejected something; it does not est
 An attributed sensor must be absent from every clean-control capture and present in every mutation capture. A pre-existing clean signal, a missing mutation signal, or truncation that prevents clean absence from being established makes the result **INCONCLUSIVE**. Truncation never turns missing evidence into success.
 
 Sensors should identify the expected guard signal rather than a generic word such as `error`. Configurations without sensors remain valid and provide exit-only evidence.
+
+## Matched counterfactual controls
+
+A matched control preserves the canary's mutation type and repository path while removing the intended violation:
+
+```json
+{
+  "id": "failing-test",
+  "type": "create",
+  "path": "test/ruletrip-canary.test.js",
+  "content": "throw new Error('RULETRIP_EXPECTED_FAILURE');\n",
+  "sensor": {
+    "stream": "combined",
+    "includes": "RULETRIP_EXPECTED_FAILURE"
+  },
+  "control": {
+    "type": "create",
+    "path": "test/ruletrip-canary.test.js",
+    "content": "export const RULETRIP_EXPECTED_FAILURE = 'neutral source marker';\n"
+  }
+}
+```
+
+`control.type` and `control.path` must exactly match the violation. The remaining mutation fields follow the same rules as the parent canary. Controls are optional and execute only after the violation has satisfied the existing repeated-exit and sensor requirements.
+
+Every matched-control run must exit zero. When the canary has a sensor, the sensor must also be absent from every bounded control capture; truncated output cannot establish absence. A rejected, unstable, timed-out, or sensor-contaminated control makes the canary **INCONCLUSIVE**.
+
+RuleTrip validates structural matching only. It does not prove that a user-authored control is semantically equivalent to its violation except for the intended defect.
 
 ## CLI
 

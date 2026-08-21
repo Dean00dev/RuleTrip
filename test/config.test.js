@@ -44,6 +44,25 @@ test('validates bounded confirmation runs and literal output sensors', () => {
   assert.throws(() => validateConfig(invalidSensor), /sensor\.stream/u);
 });
 
+test('validates matched controls on the same mutation surface', () => {
+  const raw = validConfig();
+  raw.guards[0].canaries[0].control = {
+    type: 'create',
+    path: 'test/canary.js',
+    content: 'neutral\n'
+  };
+  const config = validateConfig(raw);
+  assert.deepEqual(config.guards[0].canaries[0].control, {
+    type: 'create',
+    path: 'test/canary.js',
+    content: 'neutral\n',
+    overwrite: false
+  });
+
+  raw.guards[0].canaries[0].control.path = 'different.flag';
+  assert.throws(() => validateConfig(raw), /same type and path/u);
+});
+
 test('rejects traversal, absolute, git, and Windows escape paths', () => {
   for (const value of ['../outside', '/tmp/outside', '.git/config', 'C:\\outside', 'reports\ninjected=value']) {
     const config = validConfig();

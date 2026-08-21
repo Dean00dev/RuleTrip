@@ -15,7 +15,7 @@
 
 Your tests pass. Your linter passes. Your policy scanner passes. But would any of them notice the failure they exist to catch?
 
-RuleTrip answers that narrower, harder question by planting a controlled violation in a disposable Git worktree and running the real guard command. If the command still exits zero, the guard is **DEAD** for that canary—even though CI was green. Optional differential sensors and repeated confirmation distinguish the expected alarm from an unrelated or flaky failure.
+RuleTrip answers that narrower, harder question by planting a controlled violation in a disposable Git worktree and running the real guard command. If the command still exits zero, the guard is **DEAD** for that canary—even though CI was green. Differential sensors, repeated confirmation, and matched counterfactual controls distinguish the intended alarm from an unrelated failure, flaky response, or rule that merely rejects the canary's marker.
 
 ```text
 [baseline] Node test discovery
@@ -51,9 +51,11 @@ flowchart TD
     G -- "all zero" --> I["DEAD"]
     G -- "mixed or error" --> J
     G -- "all non-zero" --> H{"Sensor contract"}
-    H -- "none" --> K["ALIVE · exit-only"]
-    H -- "clean-absent + mutation-present" --> L["ALIVE · attributed"]
+    H -- "none or satisfied" --> M{"Matched control"}
     H -- "otherwise" --> J
+    M -- "not configured" --> K["ALIVE"]
+    M -- "passes + sensor absent" --> K
+    M -- "rejects or uncertain" --> J
 ```
 
 Every canary gets a fresh detached worktree. RuleTrip applies only declarative file mutations; it does not apply model-generated patches or mutate the checked-out commit.
@@ -62,25 +64,53 @@ Every canary gets a fresh detached worktree. RuleTrip applies only declarative f
 
 | Outcome | Meaning |
 | --- | --- |
-| **ALIVE** | Every configured confirmation rejected the planted violation; when configured, the sensor was absent on clean controls and present on mutations. |
+| **ALIVE** | Every configured confirmation rejected the planted violation; sensor contracts held; and every configured matched control passed. |
 | **DEAD** | The configured command returned zero after the violation. This is a false green. |
 | **BROKEN** | The command already failed on the clean baseline, so the experiment has no valid control. |
 | **INCONCLUSIVE** | A timeout, mutation error, or infrastructure problem prevented safe classification. |
 
-An **ALIVE** result is deliberately modest: it does not certify correctness, security, coverage, or the quality of the guard. It proves a bounded observable response to one declared canary at one commit. When a sensor is configured, `ALIVE` also requires the literal to be absent from every clean-control capture and present in every mutation capture.
+An **ALIVE** result is deliberately modest: it does not certify correctness, security, coverage, or the quality of the guard. It proves a bounded observable response to one declared canary at one commit. Sensors and matched controls add explicit attribution facts without making semantic or certification claims.
 
 ## Quick start
 
 RuleTrip requires Node.js 20+ and Git.
 
 ```bash
-npm install --save-dev github:Dean00dev/RuleTrip#v0.3.0
+npm install --save-dev github:Dean00dev/RuleTrip#v0.4.0
 npx ruletrip init --dry-run
 npx ruletrip init
 npx ruletrip run
 ```
 
 `init --dry-run` is side-effect free. It shows the detected guard commands, canary packs, test directory, and complete generated configuration before anything is written. Review that output: commands and canaries are executable policy, not magic defaults.
+
+## v0.4 matched counterfactual controls
+
+A guard can reject the right canary for the wrong reason. It may ban the canary filename, marker, or every newly created file rather than detect the intended defect.
+
+RuleTrip v0.4 can pair a violation with a near-identical neutral mutation on the same path and mutation type:
+
+```json
+{
+  "id": "type-error",
+  "type": "create",
+  "path": "ruletrip-canary.ts",
+  "content": "const value: string = 42;\n",
+  "sensor": {
+    "stream": "combined",
+    "includes": "ruletrip-canary.ts"
+  },
+  "control": {
+    "type": "create",
+    "path": "ruletrip-canary.ts",
+    "content": "const value: string = 'neutral';\n"
+  }
+}
+```
+
+For a control-configured canary to be **ALIVE**, every clean baseline and neutral control must pass, while every violation run must fail with any configured sensor contract satisfied. If the guard also rejects the neutral control, the result is **INCONCLUSIVE**, not a convenient success.
+
+This is evidence of bounded specificity, not proof that the two files are semantically equivalent. See [Matched Counterfactual Controls](docs/COUNTERFACTUAL_CONTROLS.md).
 
 ## v0.3 sensor attribution and confirmation
 
@@ -201,7 +231,7 @@ jobs:
 
       - run: npm ci
 
-      - uses: Dean00dev/RuleTrip@v0.3.0
+      - uses: Dean00dev/RuleTrip@v0.4.0
         with:
           fail_on: dead,broken,inconclusive
 ```
@@ -278,7 +308,8 @@ Read the full [Threat Model](docs/THREAT_MODEL.md) before using RuleTrip in priv
 - A poorly chosen canary can produce a misleading **ALIVE** result.
 - Built-in pack discovery is intentionally conservative and script-name based.
 - Shared dependency paths trade isolation for speed.
-- v0.3 runs experiments sequentially and supports file mutations only.
+- v0.4 runs experiments sequentially and supports file mutations only.
+- matched controls are author-declared and do not prove semantic equivalence to their paired violations.
 
 These are product boundaries, not hidden caveats. See [Design](docs/DESIGN.md) and [Roadmap](docs/ROADMAP.md).
 

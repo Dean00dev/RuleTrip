@@ -77,12 +77,16 @@ export function parseFailOn(value = DEFAULT_FAIL_ON.join(',')) {
   return [...new Set(values)];
 }
 
-function printProgress(event) {
+export function formatProgress(event) {
   if (event.phase === 'baseline') {
-    process.stdout.write(`\n[baseline] ${event.guard.name}\n`);
-  } else {
-    process.stdout.write(`[canary]   ${event.canary.name}\n`);
+    return `\n[baseline] ${event.guard.name}\n`;
   }
+  const label = event.phase === 'control' ? 'control' : 'canary';
+  return `[${label}]${' '.repeat(10 - label.length)}${event.canary.name}\n`;
+}
+
+function printProgress(event) {
+  process.stdout.write(formatProgress(event));
 }
 
 function printResult(report) {
@@ -92,6 +96,9 @@ function printResult(report) {
   );
   process.stdout.write(
     `Attribution: sensors ${report.attribution.sensorsMatched}/${report.attribution.sensorsConfigured} attributed | missing ${report.attribution.sensorsMissing} | baseline-unattributed ${report.attribution.sensorsUnattributed} | exit-only ${report.attribution.exitOnly}\n`
+  );
+  process.stdout.write(
+    `Controls: ${report.attribution.controlsPassed}/${report.attribution.controlsConfigured} passed | rejected ${report.attribution.controlsRejected} | inconclusive ${report.attribution.controlsInconclusive} | not-run ${report.attribution.controlsNotRun}\n`
   );
   for (const guard of report.guards) {
     process.stdout.write(`- ${guard.status.toUpperCase()} ${guard.name}${guard.reason ? ` — ${guard.reason}` : ''}\n`);

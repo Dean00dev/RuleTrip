@@ -18,7 +18,15 @@ The roadmap is ordered by evidence value, not feature count.
 - explicit confirmation and attribution facts in Markdown, JSON, and SARIF reports;
 - Action-as-an-Action CI on Linux, macOS, and Windows.
 
-Deferred from the original v0.3 research list because it needs a separate schema boundary:
+## v0.4 — Matched controls — candidate
+
+- opt-in counterfactual controls on the same mutation type and path;
+- fail-closed classification when the neutral control is rejected, unstable, truncated, or emits the violation sensor;
+- built-in matched controls for test, type-check, lint, and workflow-pin packs;
+- explicit control coverage in Markdown, JSON, SARIF, and Action outputs;
+- hostile fixtures for filename-only and marker-only pseudo-detection.
+
+Deferred research that still needs a separate schema boundary:
 
 - cross-guard mutation matrices;
 - custom patch canaries with checksum-bound source context.

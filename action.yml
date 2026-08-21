@@ -41,6 +41,16 @@ outputs:
     description: Number of configured sensors whose absence could not be established on clean controls.
   exit_only:
     description: Number of canaries classified from process exits without a sensor.
+  controls_configured:
+    description: Number of canaries with a matched counterfactual control.
+  controls_passed:
+    description: Number of matched controls that passed every confirmation run.
+  controls_rejected:
+    description: Number of matched controls also rejected by the guard, preventing causal attribution.
+  controls_inconclusive:
+    description: Number of matched controls that could not be classified safely.
+  controls_not_run:
+    description: Number of matched controls skipped because the violation had already escaped or was inconclusive.
   json_report:
     description: Path to the JSON report.
   sarif_report:

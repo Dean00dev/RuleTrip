@@ -1,4 +1,4 @@
 node_modules/
-ruletrip-report/
+ruletrip-report*/
 *.log
 .DS_Store
