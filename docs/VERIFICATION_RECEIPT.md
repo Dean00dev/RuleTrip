@@ -1,6 +1,6 @@
 # RuleTrip v0.4.0 candidate verification receipt
 
-This receipt separates locally executed evidence from hosted checks. Hosted evidence remains pending until the candidate branch runs through GitHub Actions.
+This receipt separates locally executed evidence from hosted checks observed for the candidate implementation commit.
 
 ## Candidate
 
@@ -37,15 +37,15 @@ This receipt separates locally executed evidence from hosted checks. Hosted evid
 
 Archive bytes and checksums are intentionally omitted: this receipt is itself packaged, so embedding them would change the archive. Generate immutable archive evidence only after the tagged source is frozen.
 
-## Hosted verification
+## Hosted verification — 2026-08-21
 
-Pending candidate publication. The workflow must complete:
+GitHub Actions [run #19](https://github.com/Dean00dev/RuleTrip/actions/runs/32484211130) completed successfully for implementation commit `1df5f2f7d9a3e4b29b6f42d4ee3bc43b2216c846`. The nine-job workflow completed:
 
-- Node.js 20 and 24 syntax checks plus all tests on Ubuntu, macOS, and Windows;
-- RuleTrip through `uses: ./` on Ubuntu, macOS, and Windows;
-- the repository's own two sensor-attributed, matched-control canaries.
+- Node.js 20 and 24 syntax checks plus all 43 tests on Ubuntu, macOS, and Windows (six successful jobs);
+- RuleTrip executed through `uses: ./` on Ubuntu, macOS, and Windows (three successful jobs);
+- the repository's own two sensor-attributed, matched-control canaries passed on every runner family.
 
-Do not convert this section to a passing claim until the hosted run and exact candidate commit are recorded.
+The hosted run demonstrates the test suite and Action entrypoint on the supported runner matrix for that candidate implementation. It does not establish the unrelated boundaries below.
 
 ## Boundaries that remain open
 
